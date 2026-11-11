@@ -138,7 +138,8 @@ More about the screens and the installer:
   [SUPPORT.md](https://github.com/journeyonlabs/bitcue/blob/main/SUPPORT.md)).
 
 <!--
-  LINKS: the one place to edit. Every shop link on this page is defined here, and nowhere else in the repo.
+  LINKS: where to edit them. Every shop link on this page is defined here. The README also links the two
+  stores directly (its "Get the hardware" section): change those too if a store link changes.
   Every Amazon link carries the Amazon Associates tracking ID. Check the product before changing a link, and
   update the estimated total above if the parts change. Don't put a price next to an Amazon link: the Associates
   rules allow prices only where Amazon serves them (its own links or its API).

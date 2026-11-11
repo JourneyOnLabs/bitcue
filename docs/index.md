@@ -7,13 +7,13 @@ title: BitCue
 A screen for the Makera Z1 that shows the running job: the bit cutting now, the next bit and when it is
 needed, and the time left. At a tool change, the whole screen turns the color of the bit to load.
 
-[![BitCue: a job screen for the Makera Z1. Click to play the 43-second video](promo.jpg)](promo.mp4)
+[![BitCue: a job screen for the Makera Z1. Watch the 50-second film on YouTube](promo.jpg)](https://youtu.be/L5BRykSpnWU)
 
-Video, 43 s. Rendered from the 3D files, not filmed.
+Film, 50 s, on YouTube. Rendered from the 3D files, not filmed.
 
-[![BitCue on a Makera Z1 during a real job. Click to play the 37-second video](live.jpg)](live.mp4)
+[![BitCue on a Makera Z1 during a real job. Watch the 37-second video on YouTube](live.jpg)](https://youtube.com/shorts/VxN5Fw7XQ98)
 
-Video, 37 s. Filmed on a Makera Z1 during a real job.
+Video, 37 s, on YouTube. Filmed on a Makera Z1 during a real job.
 
 - **[Try the demo](demo.html)** in your browser: a made-up job on the small screen or the phone page; you
   press the Z1's front button.

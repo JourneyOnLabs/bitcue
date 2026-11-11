@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- The README and the website link the videos on YouTube (the 50-second film and the 37-second live look,
+  filmed on a real job) instead of keeping video files in the repository.
 - The housing's 3D files are the universal version only, for the Waveshare screen on a Pi 3A+, 3B+, 3B or 4.
   The PiTFT housing isn't sold; the software still supports the PiTFT.
 - The parts list is grouped: one of each, the part for the set-up you choose (the Z1 or the desk), and

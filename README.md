@@ -28,13 +28,13 @@ Studio connects to the Z1 through the Pi.
 
 Unofficial: not made by or affiliated with Makera. Version 0.9 (beta).
 
-[![BitCue: a job screen for the Makera Z1. Click to play the 43-second video](docs/promo.jpg)](docs/promo.mp4)
+[![BitCue: a job screen for the Makera Z1. Watch the 50-second film on YouTube](docs/promo.jpg)](https://youtu.be/L5BRykSpnWU)
 
-Video, 43 s: [docs/promo.mp4](docs/promo.mp4). Rendered from the 3D files, not filmed.
+Film, 50 s, [on YouTube](https://youtu.be/L5BRykSpnWU). Rendered from the 3D files, not filmed.
 
-[![BitCue on a Makera Z1 during a real job. Click to play the 37-second video](docs/live.jpg)](docs/live.mp4)
+[![BitCue on a Makera Z1 during a real job. Watch the 37-second video on YouTube](docs/live.jpg)](https://youtube.com/shorts/VxN5Fw7XQ98)
 
-Video, 37 s: [docs/live.mp4](docs/live.mp4). Filmed on a Makera Z1 during a real job.
+Video, 37 s, [on YouTube](https://youtube.com/shorts/VxN5Fw7XQ98). Filmed on a Makera Z1 during a real job.
 
 ![A bit change with the bit to load and its life, cutting with the bit in use and the next one, and ready after the job](docs/screens.png)
 
@@ -48,11 +48,13 @@ BitCue needs a Raspberry Pi, a touch screen and a housing that hangs on the fron
 desk beside it.
 [Get the hardware](docs/buy.md) has both parts:
 
-- **[The 3D files](docs/buy.md#3d-files)** for the housing, from the Printables Store or Cults3D. Print it
-  yourself, or have a print service print it for you. They are sold separately and are not in this
+- **[The 3D files](docs/buy.md#3d-files)** for the housing: buy them on the
+  [Printables Store](https://www.printables.com/model/1909246-bitcue-screen-housing-for-makera-z1-raspberry-pi-t)
+  or [Cults3D](https://cults3d.com/en/3d-model/gadget/bitcue-screen-housing-for-makera-z1-raspberry-pi-touch-screen-snap-fit-z1-mou).
+  Print it yourself, or have a print service print it for you. They are sold separately and are not in this
   repository.
-- **[The electronics](docs/buy.md#electronics-parts-list)**: a parts list for each version (the universal
-  one: a Pi 3A+, 3B+ or 4 with the Waveshare 3.5inch DPI screen; or a Pi 4 with the Adafruit PiTFT 2.8").
+- **[The electronics](docs/buy.md#electronics-parts-list)**: a parts list for a Pi 3A+, 3B+, 3B or 4 with the
+  Waveshare 3.5inch DPI screen.
   BitCue doesn't sell these; some of the links are affiliate links.
 
 ## What it does

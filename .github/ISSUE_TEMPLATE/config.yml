@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Get the hardware
+    url: https://github.com/journeyonlabs/bitcue/blob/main/docs/buy.md
+    about: The housing's 3D files and the electronics parts list.
+  - name: Help with an order
+    url: https://github.com/journeyonlabs/bitcue/blob/main/docs/buy.md#help-with-an-order
+    about: Downloads and receipts for the 3D files go through the store you bought them from.
+  - name: Report a security problem
+    url: https://github.com/journeyonlabs/bitcue/security/advisories/new
+    about: Please report security problems privately, not in a public issue.

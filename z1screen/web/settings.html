@@ -1,0 +1,1426 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>BitCue Settings</title>
+<style>
+@font-face { font-family: "Barlow"; font-weight: 400; font-display: swap; src: url("fonts/barlow-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "Barlow"; font-weight: 500; font-display: swap; src: url("fonts/barlow-latin-500-normal.woff2") format("woff2"); }
+@font-face { font-family: "Barlow"; font-weight: 600; font-display: swap; src: url("fonts/barlow-latin-600-normal.woff2") format("woff2"); }
+@font-face { font-family: "Barlow"; font-weight: 700; font-display: swap; src: url("fonts/barlow-latin-700-normal.woff2") format("woff2"); }
+@font-face { font-family: "Barlow Condensed"; font-weight: 600; font-display: swap; src: url("fonts/barlow-condensed-latin-600-normal.woff2") format("woff2"); }
+@font-face { font-family: "Barlow Condensed"; font-weight: 700; font-display: swap; src: url("fonts/barlow-condensed-latin-700-normal.woff2") format("woff2"); }
+
+/* Layout: one column of sections (setup, the Pi's screen, the plate, bits, demo, start over), the same
+   dark shop-floor look as the screen, sized for a phone held next to the machine. */
+:root {
+  --ground: #141311;
+  --panel: #1e1c19;
+  --field: #2a2723;
+  --line: #3a362f;
+  --ink: #f4f0e8;
+  --muted: #aaa397;
+  --warn: #e8b23a;
+  --stop: #ff5b4f;
+  --ok: #58c26b;
+  --display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", "Helvetica Neue", Arial, sans-serif;
+  --body: "Barlow", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  color-scheme: dark;
+}
+[hidden] { display: none !important; }
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--ground); color: var(--ink); font: 400 17px/1.45 var(--body);
+  -webkit-font-smoothing: antialiased;
+  padding: calc(env(safe-area-inset-top, 0px) + 24px) max(16px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 40px) max(16px, env(safe-area-inset-left, 0px));
+}
+main { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; }
+.label { font-weight: 600; font-size: 13px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+/* The BitCue logo as the small screen's splash draws it: the name, and under it four bars in the bits' sticker
+   colors, 9/58 of the name's size below the baseline and 4/58 tall (tft.py _splash). textLength keeps the bars
+   under the name while the font loads. */
+.logo { display: block; height: 44px; width: auto; margin: 0 0 14px; }
+.logo text { font-family: var(--display); font-weight: 700; font-size: 58px; fill: var(--ink); }
+h1 { font: 700 clamp(40px, 9vw, 64px)/0.95 var(--display); margin: 4px 0 6px; letter-spacing: .005em; }
+h2 { font: 700 30px/1.05 var(--display); margin: 0; letter-spacing: .01em; text-wrap: balance; }
+p { margin: 0; }
+a { color: var(--ink); text-underline-offset: .2em; }
+.lead { color: var(--muted); }
+section { background: var(--panel); border-radius: 14px; padding: 20px clamp(16px, 4vw, 28px) 24px; display: flex; flex-direction: column; gap: 14px; }
+.note { color: var(--muted); max-width: 62ch; }
+h3 { font: 700 22px/1.1 var(--display); margin: 10px 0 0; letter-spacing: .01em; }
+.checklist { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.checklist li { display: grid; grid-template-columns: 1.7em minmax(0, 1fr); gap: 8px; align-items: baseline; }
+.checklist .mk { font-weight: 700; text-align: center; }
+.checklist .mk.ok { color: var(--ok); }
+.checklist .mk.todo { color: var(--warn); }
+.checklist a { color: var(--ink); }
+.check { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 12px; align-items: start; cursor: pointer; max-width: 62ch; }
+.check input { width: 22px; height: 22px; margin: 2px 0 0; accent-color: var(--ink); }
+.warnbox { border-left: 4px solid var(--warn); padding: 4px 0 4px 14px; display: flex; flex-direction: column; gap: 10px; max-width: 62ch; }
+textarea {
+  font: 500 16px/1.4 var(--body); color: var(--ink); background: var(--field); border: 1px solid var(--line);
+  border-radius: 10px; padding: .7em .8em; width: 100%; max-width: 32rem; min-height: 5.5em; resize: vertical;
+}
+.pinbox { background: var(--panel); border: 1px solid var(--warn); border-radius: 14px; padding: 16px clamp(16px, 4vw, 28px); display: flex; flex-direction: column; gap: 10px; }
+.pinbox form { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.pinbox input { max-width: 10rem; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* buttons */
+.btn {
+  font: 600 16px/1 var(--body); color: var(--ink); background: var(--field); border: 1px solid var(--line);
+  border-radius: 999px; padding: .8em 1.15em; cursor: pointer; min-height: 44px;
+}
+.btn:hover:not(:disabled) { border-color: var(--muted); }
+.btn:focus-visible, input:focus-visible, select:focus-visible, .sw input:focus-visible + span { outline: 3px solid var(--ink); outline-offset: 2px; }
+.btn:disabled { opacity: .4; cursor: default; }
+.btn.primary { background: var(--ink); color: var(--ground); border-color: var(--ink); }
+.btn.danger { color: var(--stop); }
+.btn.danger.armed { background: var(--stop); color: #fff; border-color: var(--stop); }
+.btn.ghost { background: transparent; }
+.plate { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 620px) { .plate { grid-template-columns: minmax(0, 1fr); } }
+.plate canvas { width: 100%; max-width: 300px; height: auto; display: block; }
+.plate-side { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.cuts { margin: 0; padding: 0 0 0 1.4em; display: grid; gap: 10px; }
+.cuts li { min-width: 0; }
+.cuts .row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.cuts .nm { font-weight: 600; overflow-wrap: anywhere; }
+.cuts .st { color: var(--muted); font-size: 15px; }
+.cuts .st.cut { color: var(--stop); }
+.cuts .st.started { color: var(--warn); }
+details.more { border-top: 1px solid var(--line); padding-top: 12px; }
+details.more summary { cursor: pointer; font-weight: 600; min-height: 32px; }
+.grid4 { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; align-items: end; margin-top: 12px; }
+.grid4 label { display: flex; flex-direction: column; gap: 6px; font-weight: 600; font-size: 15px; min-width: 0; }
+.grid4 .wide { grid-column: 1 / -1; }
+.grid4 label.switch { flex-direction: row; align-items: center; gap: 12px; font-size: 17px; }
+.grid4 select, .grid4 input { max-width: 100%; }
+.btn.small { padding: .6em .95em; min-height: 40px; font-size: 15px; }
+.btn.front { display: inline-flex; align-items: center; gap: .6em; }
+.btn.front i { width: 18px; height: 18px; border-radius: 50%; border: 3px solid currentColor; display: block; }
+.btn.front.waiting { background: var(--ink); color: var(--ground); }
+@media (prefers-reduced-motion: no-preference) {
+  .btn.front.waiting i { animation: pulse 1.2s ease-in-out infinite; }
+  @keyframes pulse { 50% { box-shadow: 0 0 0 6px rgba(20,19,17,.35); } }
+}
+.actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+
+/* bit list */
+.bits { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+.bit { border-bottom: 1px solid var(--line); }
+.bit-row { display: grid; grid-template-columns: 44px 4.2em minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 12px 0; }
+.swatch { width: 44px; height: 44px; border-radius: 10px; background: var(--c, #555); box-shadow: inset 0 0 0 1px rgba(255,255,255,.12); }
+.swatch.unset, .preview.unset {
+  background-color: #5a5650;
+  background-image: repeating-linear-gradient(135deg, rgba(255,255,255,.12) 0 6px, rgba(0,0,0,.14) 6px 12px);
+}
+.bit-code { font: 700 28px/1 var(--display); }
+.bit-code.long { font-size: 19px; line-height: 1.05; }
+.bit-main { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.bit-name { font-weight: 600; overflow-wrap: anywhere; }
+.bit-meta { color: var(--muted); font-size: 15px; }
+.bit-warn { color: var(--warn); font-size: 15px; }
+.bit-row .btn { justify-self: end; }
+
+/* bit life */
+.life-kind { border-top: 1px solid var(--line); padding: 14px 0 6px; }
+.life-kind h3 { margin: 0 0 4px; font-size: 18px; }
+.life-bits { list-style: none; margin: 8px 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.life-bit { display: grid; grid-template-columns: 2.4em minmax(0, 1fr) auto; gap: 10px; align-items: center; }
+.life-label { font: 700 24px/1 var(--display); }
+.life-bit.near .life-label { color: var(--warn); }
+.life-bit.over .life-label { color: var(--stop); }
+.life-gauge { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; margin-top: 4px; max-width: 22em; }
+.life-gauge i { display: block; height: 100%; border-radius: inherit; }
+.life-retire { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; grid-column: 1 / -1; }
+
+/* editor */
+.editor { display: flex; flex-direction: column; gap: 16px; padding: 4px 0 20px; }
+.field { display: flex; flex-direction: column; gap: 6px; border: 0; padding: 0; margin: 0; min-width: 0; }
+.field > label, .field > legend { font-weight: 600; padding: 0; }
+.help { color: var(--muted); font-size: 15px; }
+input[type="text"], input[type="number"], input[type="password"], select {
+  font: 500 17px/1.2 var(--body); color: var(--ink); background: var(--field); border: 1px solid var(--line);
+  border-radius: 10px; padding: .7em .8em; min-height: 46px; width: 100%; max-width: 26rem;
+}
+#demoJob { max-width: 100%; }
+.tnum { display: flex; align-items: center; gap: 6px; }
+.tnum span { font: 700 26px/1 var(--display); }
+.tnum input { max-width: 7rem; }
+.swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; }
+.sw { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px 4px 6px; border-radius: 10px; border: 2px solid transparent; cursor: pointer; text-align: center; }
+.sw input[type="radio"] { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.sw > span { display: block; width: 100%; max-width: 64px; height: 40px; border-radius: 8px; background: var(--c); box-shadow: inset 0 0 0 1px rgba(255,255,255,.14); }
+.sw em { font-style: normal; font-size: 14px; color: var(--muted); }
+.sw.on { border-color: var(--ink); }
+.sw.on em { color: var(--ink); font-weight: 600; }
+.sw.other > span { background: conic-gradient(#d32f2f, #ffd600, #2e7d32, #00b8d4, #1565c0, #d81b60, #d32f2f); position: relative; overflow: hidden; }
+.sw.other input[type="color"] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; border: 0; padding: 0; }
+.warn { color: var(--warn); }
+.preview {
+  --c: #555; --t: #fff; background-color: var(--c); color: var(--t); border-radius: 12px;
+  padding: 16px 18px; display: grid; gap: 2px; max-width: 26rem;
+}
+.preview .pv-load { font-weight: 700; font-size: 13px; letter-spacing: .12em; text-transform: uppercase; opacity: .85; }
+.preview .pv-code { font: 700 64px/0.9 var(--display); }
+.preview .pv-name { font-weight: 600; font-size: 19px; }
+.preview .pv-sticker { opacity: .9; }
+.msg { min-height: 1.45em; }
+.msg.err { color: var(--stop); }
+.msg.ok { color: var(--ok); }
+
+/* the Pi's screen: a live picture, drawn by the same code as the screen itself */
+.tft-frame { align-self: flex-start; width: 100%; max-width: 656px; padding: 8px; border-radius: 14px; background: #050505; box-shadow: inset 0 0 0 1px var(--line); }
+.tft { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; border-radius: 4px; background: #000; image-rendering: pixelated; }
+.switch { display: inline-flex; align-items: center; gap: 12px; font-weight: 600; cursor: pointer; min-height: 44px; align-self: flex-start; }
+.switch input { width: 22px; height: 22px; margin: 0; accent-color: var(--ink); }
+
+/* demo */
+.seg { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+.seg label { position: relative; }
+.seg input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.seg span { display: inline-block; padding: .65em 1em; border-radius: 999px; border: 1px solid var(--line); background: var(--field); font-weight: 600; cursor: pointer; }
+.seg input:checked + span { background: var(--ink); color: var(--ground); border-color: var(--ink); }
+.seg input:focus-visible + span { outline: 3px solid var(--ink); outline-offset: 2px; }
+.status { padding: 12px 14px; border-radius: 10px; background: var(--field); min-height: 3.2em; }
+.status b { font-weight: 700; }
+footer { color: var(--muted); font-size: 15px; display: flex; flex-wrap: wrap; gap: 6px 18px; }
+@media (max-width: 520px) {
+  .bit-row { grid-template-columns: 40px minmax(0, 1fr) auto; }
+  .bit-code { grid-column: 2; grid-row: 1; font-size: 24px; }
+  .bit-code.long { font-size: 20px; }
+  .bit-main { grid-column: 2 / 4; grid-row: 2; }
+  .swatch { width: 40px; height: 40px; grid-row: 1 / 3; }
+  .bit-row .btn { grid-column: 3; grid-row: 1; }
+}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <svg class="logo" viewBox="0 -43 135 56" role="img" aria-label="BitCue">
+      <text x="0" y="0" textLength="135" lengthAdjust="spacingAndGlyphs">BitCue</text>
+      <rect x="2" y="9" width="29.75" height="4" rx="2" fill="#d32f2f"/>
+      <rect x="35.75" y="9" width="29.75" height="4" rx="2" fill="#ffd600"/>
+      <rect x="69.5" y="9" width="29.75" height="4" rx="2" fill="#7cb342"/>
+      <rect x="103.25" y="9" width="29.75" height="4" rx="2" fill="#00b8d4"/>
+    </svg>
+    <h1>Settings</h1>
+    <p class="lead" id="machine">Nothing on this page is sent to the Z1.</p>
+  </header>
+
+  <div class="pinbox" id="pinBox" hidden>
+    <p><b>Enter the settings PIN.</b></p>
+    <form id="pinAsk">
+      <input type="password" id="pinGiven" inputmode="numeric" autocomplete="off" maxlength="12" aria-label="Settings PIN">
+      <button class="btn primary" type="submit">OK</button>
+    </form>
+    <p class="msg" id="pinAskMsg" role="status"></p>
+  </div>
+
+  <section aria-labelledby="setupTitle" id="setupSection">
+    <h2 id="setupTitle">Setup</h2>
+    <ol class="checklist" id="checklist" aria-live="polite"></ol>
+
+    <h3>Anchor 1</h3>
+    <p class="note">Used to place cut areas on the plate and to start jobs from the touch screen.</p>
+    <div class="seg" role="radiogroup" aria-label="Where Anchor 1 comes from">
+      <label><input type="radio" name="anchorMode" id="anchorAuto" value="auto"><span>Read it from the Z1</span></label>
+      <label><input type="radio" name="anchorMode" id="anchorManual" value="manual"><span>Type it</span></label>
+    </div>
+    <p class="status num" id="anchorStatus" role="status">Checking…</p>
+    <form class="grid4" id="anchorForm" hidden>
+      <label>X, mm<input type="number" id="ax" step="0.001" required></label>
+      <label>Y, mm<input type="number" id="ay" step="0.001" required></label>
+      <div class="actions"><button class="btn" type="submit">Save Anchor 1</button></div>
+    </form>
+    <div class="actions" id="anchorReadRow"><button class="btn small" id="anchorRead" type="button">Read again</button></div>
+    <p class="help num" id="appOrigin"></p>
+    <p class="msg" id="anchorMsg" role="status"></p>
+
+    <h3>Starting from the touch screen</h3>
+    <p class="note">When on, JOBS on the touch screen places a job on the plate and starts it when you hold START for 2 seconds.</p>
+    <p class="status" id="startStatus" role="status">Checking…</p>
+    <div class="warnbox" id="startOnBox" hidden>
+      <p><b>The machine moves when START is held.</b> Only turn this on if:</p>
+      <ul class="note">
+        <li>your job files have X0 Y0 at the plate's front left corner</li>
+        <li>the plate sits in the Anchor 1 corner and its size is set</li>
+        <li>Anchor 1 above is correct</li>
+        <li>you stay at the machine for every start</li>
+      </ul>
+      <label class="check"><input type="checkbox" id="startAccept"><span>I understand.</span></label>
+      <div class="actions"><button class="btn primary" id="startEnable" type="button">Turn on</button></div>
+    </div>
+    <div class="actions" id="startOffRow" hidden><button class="btn" id="startDisable" type="button">Turn it off</button></div>
+    <p class="msg" id="startMsg" role="status"></p>
+
+    <details class="more">
+      <summary>Run settings for files without a run window</summary>
+      <p class="help">Used for files without a run window note.</p>
+      <form class="grid4" id="runForm">
+        <label class="switch wide"><input type="checkbox" id="runProbe"><span>Z probe in the middle of the job</span></label>
+        <label class="switch wide"><input type="checkbox" id="runMargin"><span>Edge scan (Scan Margin)</span></label>
+        <label class="switch wide"><input type="checkbox" id="runLevel"><span>Auto leveling</span></label>
+        <label>Points across (X)<input type="number" id="runI" min="2" max="10" step="1" value="5"></label>
+        <label>Points along (Y)<input type="number" id="runJ" min="2" max="10" step="1" value="5"></label>
+        <label>Height, mm<input type="number" id="runH" min="0.5" max="20" step="0.5" value="2"></label>
+        <div class="actions"><button class="btn" type="submit">Save</button></div>
+      </form>
+      <p class="msg" id="runMsg" role="status"></p>
+    </details>
+
+    <details class="more">
+      <summary>Plate layout folders</summary>
+      <p class="help">Folders of files that are parts of one planned sheet. One per line, for example /sd/gcodes/my-sheet.</p>
+      <form id="layoutForm" class="actions">
+        <textarea id="layouts" aria-label="Plate layout folders" spellcheck="false"></textarea>
+        <button class="btn" type="submit">Save</button>
+      </form>
+      <p class="msg" id="layoutMsg" role="status"></p>
+    </details>
+
+    <details class="more">
+      <summary>Settings PIN</summary>
+      <p class="help" id="pinNote"></p>
+      <form class="grid4" id="pinForm">
+        <label>New PIN (4 to 12 digits)<input type="password" id="pinNew" inputmode="numeric" autocomplete="new-password" maxlength="12"></label>
+        <div class="actions"><button class="btn" type="submit">Save</button><button class="btn ghost" id="pinRemove" type="button" hidden>Remove PIN</button></div>
+      </form>
+      <p class="msg" id="pinMsg" role="status"></p>
+    </details>
+    <p class="help num" id="versionNote"></p>
+  </section>
+
+  <section aria-labelledby="notifyTitle" id="notifySection">
+    <h2 id="notifyTitle">Phone notifications</h2>
+    <p class="note">Your phone buzzes when the Z1 stops for a bit change, with the bit and its sticker color, and when a job stops with an alarm or is paused.
+      Install the free <a href="https://ntfy.sh" target="_blank" rel="noopener">ntfy</a> app, subscribe to the topic below, then press Send a test.</p>
+    <p class="status" id="notifyStatus" role="status">Checking…</p>
+    <form class="grid4" id="notifyForm">
+      <label class="wide">Topic<input type="text" id="nTopic" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="64" placeholder="bitcue-…"></label>
+      <div class="actions"><button class="btn small ghost" id="nNewTopic" type="button">New random topic</button></div>
+      <label class="switch wide"><input type="checkbox" id="nStops"><span>When the Z1 stops for a bit change</span></label>
+      <label class="switch wide"><input type="checkbox" id="nAlarms"><span>When a job stops with an alarm</span></label>
+      <label class="switch wide"><input type="checkbox" id="nPauses"><span>When a job is paused</span></label>
+      <p class="help wide">Early warning: also notify this many minutes before each stop (0: off).</p>
+      <label>Early warning, min<input type="number" id="nSoon" min="0" max="60" step="1" value="0"></label>
+      <div class="actions wide"><button class="btn" type="submit">Save</button><button class="btn ghost" id="nTest" type="button">Send a test</button><button class="btn ghost" id="nOff" type="button">Turn off</button></div>
+    </form>
+    <p class="msg" id="notifyMsg" role="status"></p>
+    <details class="more">
+      <summary>Your own ntfy server</summary>
+      <p class="help">Anyone who knows the topic can read it on ntfy.sh, so keep it long and random. For your own server, type its address and, if it needs one, an access token.</p>
+      <form class="grid4" id="notifyServerForm">
+        <label class="wide">Server<input type="url" id="nServer" autocomplete="off" spellcheck="false" placeholder="https://ntfy.sh"></label>
+        <label class="wide">Access token<input type="password" id="nToken" autocomplete="off" placeholder="none"></label>
+        <div class="actions"><button class="btn" type="submit">Save</button></div>
+      </form>
+    </details>
+  </section>
+
+  <section aria-labelledby="screenTitle">
+    <h2 id="screenTitle">The Pi's screen</h2>
+    <p class="note">What the Pi's screen shows now.</p>
+    <div class="tft-frame" id="tftFrame"><img class="tft" id="tftPic" width="320" height="240" alt="What the Pi's screen shows now"></div>
+    <p class="note" id="tftNone" hidden>No picture: this Pi uses a monitor, or the screen program isn't installed.</p>
+    <label class="switch"><input type="checkbox" id="flip"><span>Turn the picture upside down</span></label>
+    <label class="switch"><input type="checkbox" id="clock24"><span>24-hour times (14:30 instead of 2:30 PM)</span></label>
+    <div class="actions"><button class="btn" id="touchCal" type="button">Set up the touch screen</button></div>
+    <p class="help">Touch the middle of each of the four dots on the Pi's screen.</p>
+    <p class="msg" id="screenMsg" role="status"></p>
+  </section>
+
+  <section aria-labelledby="platesTitle" id="platesSection" hidden>
+    <h2 id="platesTitle">The plate on the Z1</h2>
+    <p class="note">The plate in the Anchor 1 corner and the areas already cut on it. Jobs run through the Pi are added automatically.</p>
+    <div class="plate">
+      <canvas id="plateCanvas" width="440" height="470" role="img" aria-label="The plate and its cut areas"></canvas>
+      <div class="plate-side">
+        <p class="note" id="plateSize"></p>
+        <ol class="cuts" id="cutList"></ol>
+        <p class="note" id="plateUnknown" hidden></p>
+        <div class="actions"><button class="btn danger" id="newPlate" type="button">New plate</button>
+          <button class="btn" id="lastPlate" type="button" hidden>Back to the last plate</button></div>
+        <p class="help" id="lastPlateNote" hidden></p>
+      </div>
+    </div>
+    <details class="more" id="sizeMore">
+      <summary>Plate size</summary>
+      <form class="grid4" id="sizeForm">
+        <label>Width (X), mm<input type="number" id="pw" step="0.1" min="10" max="400" required></label>
+        <label>Depth (Y), mm<input type="number" id="ph" step="0.1" min="10" max="400" required></label>
+        <label>Thickness, mm<input type="number" id="pt" step="0.01" min="0.1" max="100" required></label>
+        <label>Material<input type="text" id="pm" maxlength="40"></label>
+        <div class="actions"><button class="btn" type="submit">Save the size</button></div>
+      </form>
+    </details>
+    <details class="more">
+      <summary>Add a cut area by hand</summary>
+      <p class="help">For a job the Pi didn't see. Pick its file and its offsets from Anchor 1, or type a rectangle.</p>
+      <form class="grid4" id="addFileForm">
+        <label class="wide">Job file<select id="addFile"></select></label>
+        <label>X offset, mm<input type="number" id="addDx" step="0.5" value="0"></label>
+        <label>Y offset, mm<input type="number" id="addDy" step="0.5" value="0"></label>
+        <div class="actions"><button class="btn" type="submit">Add this job's area</button></div>
+      </form>
+      <form class="grid4" id="addRectForm">
+        <label>X from, mm<input type="number" id="rx0" step="0.5" required></label>
+        <label>X to, mm<input type="number" id="rx1" step="0.5" required></label>
+        <label>Y from, mm<input type="number" id="ry0" step="0.5" required></label>
+        <label>Y to, mm<input type="number" id="ry1" step="0.5" required></label>
+        <label class="wide">Name<input type="text" id="rname" maxlength="60" placeholder="Marked by hand"></label>
+        <div class="actions"><button class="btn" type="submit">Add the rectangle</button></div>
+      </form>
+    </details>
+    <p class="msg" id="platesMsg" role="status"></p>
+  </section>
+
+  <section aria-labelledby="bitsTitle">
+    <h2 id="bitsTitle">Bits and sticker colors</h2>
+    <p class="note">At each stop, the screen turns the color of the bit number (T1, T2 ...). Use each number for one bit only.</p>
+    <p class="msg" id="listMsg" role="status"></p>
+    <ul class="bits" id="bitList"></ul>
+    <div class="actions"><button class="btn" id="addBit" type="button">Add a bit</button></div>
+  </section>
+
+  <section aria-labelledby="lifeTitle" id="lifeSection">
+    <h2 id="lifeTitle">Bit life</h2>
+    <p class="note">The time each bit has cut, by the Z1's own job clock (stops and pauses not counted). Bits of the same kind are labelled A, B, C: mark the holder the same way.
+      At each stop the screen names the least used one; tap its line there to use another.</p>
+    <p class="help">Expected life: leave it blank until a few bits have worn out. Set it and the gauge under the bit's line on the stop screen fills green, then yellow, then red as the bit wears, the start screen warns before a job that would take a bit past it, and so does your phone.</p>
+    <p class="msg" id="lifeMsg" role="status"></p>
+    <div id="lifeList"></div>
+  </section>
+
+  <section aria-labelledby="demoTitle">
+    <h2 id="demoTitle">Demo on the Pi's screen</h2>
+    <p class="note">Plays a job on the Pi's screen while the Z1 is idle. Nothing is sent to the Z1.</p>
+    <div class="field">
+      <label for="demoJob">Job</label>
+      <select id="demoJob"></select>
+    </div>
+    <fieldset class="field">
+      <legend>Speed</legend>
+      <div class="seg">
+        <label><input type="radio" name="demoSpeed" id="speed60" value="60" checked><span>60× faster</span></label>
+        <label><input type="radio" name="demoSpeed" id="speed360" value="360"><span>360× faster</span></label>
+        <label><input type="radio" name="demoSpeed" id="speed1" value="1"><span>Real speed</span></label>
+      </div>
+    </fieldset>
+    <div class="actions">
+      <button class="btn primary" id="demoStart" type="button">Start the demo</button>
+      <button class="btn front" id="demoPress" type="button" disabled><i></i>Front button (demo)</button>
+      <button class="btn" id="demoSkip" type="button" disabled>Skip to the next stop</button>
+      <button class="btn ghost" id="demoStop" type="button" disabled>Stop the demo</button>
+    </div>
+    <p class="status" id="demoStatus" role="status">Checking…</p>
+  </section>
+
+  <section aria-labelledby="resetTitle">
+    <h2 id="resetTitle">Start over</h2>
+    <p class="note" id="resetNote">The screen is using the starting colors.</p>
+    <div class="actions"><button class="btn danger" id="resetBits" type="button">Go back to the starting colors</button></div>
+    <p class="msg" id="resetMsg" role="status"></p>
+  </section>
+
+  <footer>
+    <a href="./">Open the screen</a>
+    <a href="debug">Troubleshooting details</a>
+  </footer>
+</main>
+
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var SPECIAL = { 0: "Probe", 8888: "Laser", 9999: "3D probe" };
+  var HEX = /^#[0-9A-Fa-f]{6}$/;
+  var info = { tools: {}, kit: {}, saved: false, palette: [], seen: {}, machine: "" };
+  var editing = null;      // bit number being edited, or "new"
+  var demo = { active: false };
+  var jobsLoaded = false;
+
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+  function code(n) { return SPECIAL[n] !== undefined ? SPECIAL[n] : "T" + n; }
+  function textOn(hex) {
+    var h = (hex || "").replace("#", "");
+    if (h.length !== 6) return "#ffffff";
+    var c = [0, 2, 4].map(function (i) {
+      var x = parseInt(h.substr(i, 2), 16) / 255;
+      return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2] > 0.3 ? "#111111" : "#ffffff";
+  }
+  function dur(s) {
+    s = Math.max(0, Math.round(s || 0));
+    if (s < 60) return s + " s";
+    var h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+    return h ? h + " h " + (m < 10 ? "0" : "") + m + " min" : m + " min";
+  }
+  var pin = "";            // the settings PIN typed on this page (kept only while the page is open)
+  function api(method, path, body) {
+    var opt = { method: method, cache: "no-store", headers: {} };
+    if (body !== undefined) {
+      opt.headers["Content-Type"] = "application/json";
+      opt.body = JSON.stringify(body);
+    }
+    if (pin) opt.headers["X-Settings-PIN"] = pin;
+    return fetch(path, opt).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (j) {
+        if (!r.ok) {
+          if (j.pin) { $("pinBox").hidden = false; $("pinGiven").focus(); }
+          throw new Error(j.error || "The Pi answered with an error (" + r.status + ").");
+        }
+        return j;
+      });
+    }, function () {
+      throw new Error("Can't reach the screen. Check that the Pi is on and on the same Wi-Fi.");
+    });
+  }
+  function say(id, text, kind) {
+    var m = $(id);
+    m.textContent = text || "";
+    m.className = "msg" + (kind ? " " + kind : "");
+  }
+
+  // ---------------------------------------------------------------- bits
+  function fileNames(n) {
+    var s = info.seen[String(n)];
+    if (!s) return [];
+    return Object.keys(s.names).sort(function (a, b) { return s.names[b] - s.names[a]; })
+      .map(function (k) { return { name: k, files: s.names[k] }; });
+  }
+  function numbers() {
+    var set = {};
+    Object.keys(info.tools).concat(Object.keys(info.seen)).forEach(function (k) {
+      var n = parseInt(k, 10);
+      if (!isNaN(n)) set[n] = true;
+    });
+    return Object.keys(set).map(Number).sort(function (a, b) { return a - b; });
+  }
+  function entry(n) {
+    var e = info.tools[String(n)];
+    return e && typeof e === "object" ? e : null;
+  }
+  function hasColor(e) { return !!(e && HEX.test(e.color || "")); }
+  function nameFor(n) {
+    var e = entry(n), files = fileNames(n);
+    if (files.length && n !== 0) return { text: files[0].name, from: "file" };
+    if (e && e.name) return { text: e.name, from: "list" };
+    if (SPECIAL[n] !== undefined) return { text: SPECIAL[n], from: "list" };
+    return { text: "", from: "" };
+  }
+
+  function renderList() {
+    var list = $("bitList");
+    list.textContent = "";
+    numbers().forEach(function (n) {
+      var e = entry(n), seen = info.seen[String(n)], files = fileNames(n);
+      var li = el("li", "bit");
+      li.dataset.n = n;
+      var row = el("div", "bit-row");
+      var sw = el("span", "swatch" + (hasColor(e) ? "" : " unset"));
+      if (hasColor(e)) sw.style.setProperty("--c", e.color);
+      sw.setAttribute("aria-hidden", "true");
+      row.appendChild(sw);
+      row.appendChild(el("span", "bit-code" + (code(n).length > 5 ? " long" : ""), code(n)));
+      var main = el("span", "bit-main");
+      var nm = nameFor(n);
+      main.appendChild(el("span", "bit-name", nm.text || "No name yet"));
+      var meta = [];
+      meta.push(hasColor(e) ? (e.sticker ? e.sticker + " sticker" : "Color set, no sticker name") : "No color yet");
+      if (seen) meta.push("in " + seen.files + " job file" + (seen.files === 1 ? "" : "s"));
+      else if (n !== 0) meta.push("not in any job file the screen knows");
+      main.appendChild(el("span", "bit-meta", meta.join(" · ")));
+      if (files.length > 1) {
+        main.appendChild(el("span", "bit-warn", "Job files use " + code(n) + " for different bits: " +
+          files.map(function (f) { return f.name + " (" + f.files + ")"; }).join(", ") +
+          ". The screen can't tell them apart by color."));
+      }
+      row.appendChild(main);
+      var b = el("button", "btn small", hasColor(e) ? "Edit" : "Choose a color");
+      b.type = "button";
+      b.setAttribute("aria-expanded", editing === n ? "true" : "false");
+      b.addEventListener("click", function () { openEditor(editing === n ? null : n); });
+      row.appendChild(b);
+      li.appendChild(row);
+      if (editing === n) li.appendChild(buildEditor(n));
+      list.appendChild(li);
+    });
+    if (editing === "new") {
+      var li = el("li", "bit");
+      li.appendChild(buildEditor("new"));
+      list.appendChild(li);
+    }
+    $("addBit").hidden = editing === "new";
+    $("resetNote").textContent = info.saved
+      ? "Using colors saved on this page."
+      : "Using the starting colors.";
+    $("resetBits").disabled = !info.saved;
+  }
+
+  function openEditor(n) {
+    editing = n;
+    say("listMsg", "");
+    renderList();
+    var f = document.querySelector(".editor input, .editor select");
+    if (f) f.focus();
+  }
+
+  function buildEditor(n) {
+    var isNew = n === "new";
+    var e = isNew ? null : entry(n);
+    var form = el("form", "editor");
+    form.noValidate = true;
+    var cur = {
+      color: hasColor(e) ? e.color.toUpperCase() : "",
+      sticker: e ? (e.sticker || "") : "",
+      name: e ? (e.name || "") : ""
+    };
+    if (!isNew && !cur.name) cur.name = nameFor(n).text;
+
+    if (isNew) {
+      var f0 = el("div", "field");
+      var l0 = el("label", "", "Bit number"); l0.htmlFor = "edNum";
+      var t = el("div", "tnum"); t.appendChild(el("span", "", "T"));
+      var num = el("input"); num.type = "number"; num.id = "edNum"; num.min = "1"; num.max = "9999"; num.step = "1";
+      num.inputMode = "numeric"; num.required = true;
+      t.appendChild(num);
+      f0.appendChild(l0); f0.appendChild(t);
+      f0.appendChild(el("p", "help", "The number the job file uses for this bit, for example 5 for T5."));
+      form.appendChild(f0);
+      num.addEventListener("input", function () {
+        var k = parseInt(num.value, 10);
+        if (!name.value && fileNames(k).length) name.value = fileNames(k)[0].name;
+        update();
+      });
+    }
+
+    var f1 = el("div", "field");
+    var l1 = el("label", "", "Name"); l1.htmlFor = "edName";
+    var name = el("input"); name.type = "text"; name.id = "edName"; name.maxLength = 100; name.value = cur.name;
+    name.autocomplete = "off";
+    f1.appendChild(l1); f1.appendChild(name);
+    var files = isNew ? [] : fileNames(n);
+    f1.appendChild(el("p", "help", files.length
+      ? "The job files call it " + files[0].name + ", and the screen shows that name. This name is used for files that don't name the bit."
+      : "Shown on the screen when the job file doesn't name the bit."));
+    form.appendChild(f1);
+
+    var f2 = el("fieldset", "field");
+    f2.appendChild(el("legend", "", "Sticker color"));
+    var grid = el("div", "swatches");
+    var paletteHit = false;
+    info.palette.forEach(function (p, i) {
+      var lab = el("label", "sw");
+      var r = el("input"); r.type = "radio"; r.name = "edColor"; r.value = p.color; r.id = "edColor" + i;
+      r.dataset.word = p.name;
+      if (cur.color === p.color.toUpperCase()) { r.checked = true; paletteHit = true; }
+      var chip = el("span"); chip.style.setProperty("--c", p.color);
+      lab.appendChild(r); lab.appendChild(chip); lab.appendChild(el("em", "", p.name));
+      r.addEventListener("change", function () { sticker.value = p.name; update(); });
+      grid.appendChild(lab);
+    });
+    var other = el("label", "sw other");
+    var ro = el("input"); ro.type = "radio"; ro.name = "edColor"; ro.value = "other"; ro.id = "edColorOther";
+    var pick = el("input"); pick.type = "color"; pick.id = "edCustom";
+    pick.setAttribute("aria-label", "Pick another color");
+    pick.value = cur.color && !paletteHit ? cur.color.toLowerCase() : "#8e24aa";
+    if (cur.color && !paletteHit) ro.checked = true;
+    var chipO = el("span"); chipO.appendChild(pick);
+    other.appendChild(ro); other.appendChild(chipO); other.appendChild(el("em", "", "Other"));
+    pick.addEventListener("input", function () { ro.checked = true; if (!cur.customWord) sticker.value = ""; update(); });
+    ro.addEventListener("change", update);
+    grid.appendChild(other);
+    f2.appendChild(grid);
+    form.appendChild(f2);
+
+    var f3 = el("div", "field");
+    var l3 = el("label", "", "Sticker word"); l3.htmlFor = "edSticker";
+    var sticker = el("input"); sticker.type = "text"; sticker.id = "edSticker"; sticker.maxLength = 30; sticker.value = cur.sticker;
+    sticker.autocomplete = "off";
+    sticker.addEventListener("input", function () { cur.customWord = true; update(); });
+    f3.appendChild(l3); f3.appendChild(sticker);
+    f3.appendChild(el("p", "help", "Shown on the screen with the bit, for example “Blue sticker”."));
+    form.appendChild(f3);
+
+    var warn = el("p", "warn");
+    warn.setAttribute("role", "status");
+    form.appendChild(warn);
+
+    var pv = el("div", "preview");
+    pv.setAttribute("aria-label", "How the stop screen will look");
+    var pvLoad = el("span", "pv-load", "Load"), pvCode = el("span", "pv-code"), pvName = el("span", "pv-name"),
+        pvSticker = el("span", "pv-sticker");
+    pv.appendChild(pvLoad); pv.appendChild(pvCode); pv.appendChild(pvName); pv.appendChild(pvSticker);
+    form.appendChild(pv);
+
+    var acts = el("div", "actions");
+    var save = el("button", "btn primary", "Save"); save.type = "submit";
+    var check = el("button", "btn", "Show on the Pi's screen"); check.type = "button";
+    var cancel = el("button", "btn ghost", "Cancel"); cancel.type = "button";
+    acts.appendChild(save); acts.appendChild(check); acts.appendChild(cancel);
+    var remove = null;
+    if (!isNew && entry(n)) {
+      remove = el("button", "btn danger", "Remove " + code(n)); remove.type = "button";
+      acts.appendChild(remove);
+    }
+    form.appendChild(acts);
+    var msg = el("p", "msg"); msg.setAttribute("role", "status");
+    form.appendChild(msg);
+
+    function number() {
+      if (!isNew) return n;
+      var k = Number(num.value);
+      return Number.isInteger(k) ? k : NaN;
+    }
+    function chosen() {
+      var r = form.querySelector('input[name="edColor"]:checked');
+      if (!r) return "";
+      return (r.value === "other" ? pick.value : r.value).toUpperCase();
+    }
+    function update() {
+      var k = number(), c = chosen();
+      Array.prototype.forEach.call(grid.querySelectorAll(".sw"), function (lab) {
+        lab.classList.toggle("on", !!lab.querySelector("input:checked"));
+      });
+      pv.className = "preview" + (c ? "" : " unset");
+      pv.style.setProperty("--c", c || "#5a5650");
+      pv.style.setProperty("--t", textOn(c || "#5a5650"));
+      if (k === 0) {
+        pvLoad.textContent = "Load the probe";
+        pvCode.textContent = "";
+        pvName.textContent = "Wired probe";
+        pvSticker.textContent = "";
+      } else {
+        pvLoad.textContent = "Load";
+        pvCode.textContent = isNaN(k) ? "T?" : code(k);
+        pvName.textContent = (isNew && fileNames(k).length ? fileNames(k)[0].name : (files.length ? files[0].name : name.value)) || "";
+        pvSticker.textContent = c ? (sticker.value ? sticker.value + " sticker" : "") : "No sticker color set";
+      }
+      var clash = [];
+      Object.keys(info.tools).forEach(function (key) {
+        var o = info.tools[key];
+        if (String(key) !== String(k) && o && HEX.test(o.color || "") && c && o.color.toUpperCase() === c) clash.push(code(Number(key)));
+      });
+      warn.textContent = clash.length ? "This color is also used for " + clash.join(" and ") +
+        ". Two bits with the same color are easy to mix up." : "";
+    }
+    function entryValue() {
+      return { name: name.value.trim(), color: chosen(), sticker: sticker.value.trim() };
+    }
+    function problem() {
+      var k = number();
+      if (isNew) {
+        if (isNaN(k) || k < 1 || k > 9999) return "Type the bit number, a whole number from 1 to 9999.";
+        if (entry(k)) return code(k) + " is already in the list. Edit it there.";
+      }
+      if (!chosen()) return "Choose a sticker color.";
+      return "";
+    }
+
+    form.addEventListener("submit", function (ev) {
+      ev.preventDefault();
+      var p = problem();
+      if (p) { say2(p, "err"); return; }
+      var k = number();
+      var table = cleanTable();
+      table[String(k)] = entryValue();
+      save.disabled = true;
+      api("POST", "api/bits", { tools: table }).then(function (j) {
+        applyInfo(j);
+        editing = null;
+        renderList();
+        say("listMsg", "Saved " + code(k) + ". The screen uses the new color now.", "ok");
+      }, function (err) { say2(err.message, "err"); save.disabled = false; });
+    });
+    check.addEventListener("click", function () {
+      var p = problem();
+      if (p && p.indexOf("already") < 0) { say2(p, "err"); return; }
+      api("POST", "api/check", { tool: number(), entry: entryValue() }).then(function () {
+        say2("Showing " + code(number()) + " on the Pi's screen for 20 seconds. Hold the sticker next to it.", "ok");
+        refreshDemo();
+      }, function (err) { say2(err.message, "err"); });
+    });
+    cancel.addEventListener("click", function () { openEditor(null); });
+    if (remove) {
+      remove.addEventListener("click", function () {
+        if (!remove.classList.contains("armed")) {
+          remove.classList.add("armed");
+          remove.textContent = "Press again to remove " + code(n);
+          return;
+        }
+        var table = cleanTable();
+        delete table[String(n)];
+        api("POST", "api/bits", { tools: table }).then(function (j) {
+          applyInfo(j);
+          editing = null;
+          renderList();
+          say("listMsg", "Removed " + code(n) + ". It now shows as striped gray with no sticker color.", "ok");
+        }, function (err) { say2(err.message, "err"); });
+      });
+    }
+    function say2(text, kind) { msg.textContent = text; msg.className = "msg" + (kind ? " " + kind : ""); }
+    setTimeout(update, 0);
+    return form;
+  }
+
+  // The table to send: every bit that has a usable color.
+  function cleanTable() {
+    var out = {};
+    Object.keys(info.tools).forEach(function (k) {
+      var e = info.tools[k];
+      if (e && HEX.test(e.color || "")) out[k] = { name: e.name || "", color: e.color, sticker: e.sticker || "" };
+    });
+    return out;
+  }
+
+  function applyInfo(j) {
+    info.tools = j.tools || {};
+    info.kit = j.kit || {};
+    info.saved = !!j.saved;
+    info.palette = j.palette || [];
+    info.seen = j.seen || {};
+    info.machine = j.machine || "";
+    $("machine").textContent = (info.machine ? info.machine + ". " : "") + "Nothing on this page is sent to the Z1.";
+  }
+
+  function loadBits() {
+    return api("GET", "api/bits").then(function (j) { applyInfo(j); renderList(); },
+      function (err) { say("listMsg", err.message, "err"); });
+  }
+
+  $("addBit").addEventListener("click", function () { openEditor("new"); });
+
+  var resetArmed = false;
+  $("resetBits").addEventListener("click", function () {
+    var b = $("resetBits");
+    if (!resetArmed) {
+      resetArmed = true;
+      b.classList.add("armed");
+      b.textContent = "Press again to go back to the starting colors";
+      return;
+    }
+    resetArmed = false;
+    b.classList.remove("armed");
+    b.textContent = "Go back to the starting colors";
+    api("POST", "api/bits/reset", {}).then(function (j) {
+      applyInfo(j); editing = null; renderList();
+      say("resetMsg", "Back to the starting colors.", "ok");
+    }, function (err) { say("resetMsg", err.message, "err"); });
+  });
+
+  // ---------------------------------------------------------------- demo
+  function speed() {
+    var r = document.querySelector('input[name="demoSpeed"]:checked');
+    return r ? Number(r.value) : 60;
+  }
+  function renderDemo(st) {
+    demo = st;
+    if (st.jobs && !jobsLoaded) {
+      jobsLoaded = true;
+      var sel = $("demoJob");
+      sel.textContent = "";
+      st.jobs.forEach(function (j) {
+        var o = el("option", "", j.name.replace(/\.nc$/i, "") + " (" + dur(j.total) + ", " + j.changes + " tool changes)");
+        o.value = j.path;
+        sel.appendChild(o);
+      });
+      if (!st.jobs.length) sel.appendChild(el("option", "", "No job files known yet"));
+    }
+    var s = $("demoStatus");
+    s.textContent = "";
+    var active = !!st.active, demoKind = active && st.kind === "demo";
+    $("demoStart").disabled = active || !!st.blocked;
+    $("demoPress").disabled = !(demoKind && st.waiting);
+    $("demoPress").classList.toggle("waiting", !!(demoKind && st.waiting));
+    $("demoSkip").disabled = !(demoKind && !st.waiting && st.phase !== "done");
+    $("demoStop").disabled = !active;
+    if (!active) {
+      s.textContent = st.blocked || st.note || "Not playing.";
+      return;
+    }
+    if (st.kind === "check") {
+      s.textContent = "Showing a color check on the Pi's screen. It ends in " + dur(st.ends_in) + ".";
+      return;
+    }
+    if (st.phase === "ready") {
+      s.textContent = "Starting: the Pi's screen shows Ready, then the Z1 asks for the probe.";
+    } else if (st.waiting && st.tool) {
+      var t = st.tool;
+      var what = t.tool === 0 ? "the probe" : t.code + (t.label ? " (" + t.label + ")" : "");
+      s.appendChild(document.createTextNode("Stop: the real Z1 would beep now and wait for " + what +
+        (t.tool !== 0 && t.sticker && !t.unset ? ", " + t.sticker.toLowerCase() + " sticker" : "") + ". Press "));
+      s.appendChild(el("b", "", "Front button (demo)"));
+      s.appendChild(document.createTextNode(" to carry on."));
+    } else if (st.phase === "done") {
+      s.textContent = "The job is done. The demo ends by itself in " + dur(st.ends_in) + ".";
+    } else {
+      s.textContent = "Cutting, " + dur(st.est) + " of " + dur(st.total) + " (playing " +
+        (st.speed === 1 ? "at real speed" : st.speed + "× faster") + "). Ends by itself in " + dur(st.ends_in) + ".";
+    }
+  }
+  function refreshDemo() {
+    return api("GET", "api/demo").then(renderDemo, function (err) {
+      $("demoStatus").textContent = err.message;
+    });
+  }
+  function demoAction(body) {
+    return api("POST", "api/demo", body).then(function (st) { renderDemo(st); return refreshDemo(); },
+      function (err) { $("demoStatus").textContent = err.message; });
+  }
+  $("demoStart").addEventListener("click", function () {
+    $("demoStatus").textContent = "Starting…";
+    demoAction({ action: "start", path: $("demoJob").value, speed: speed() });
+  });
+  $("demoPress").addEventListener("click", function () { demoAction({ action: "press" }); });
+  $("demoSkip").addEventListener("click", function () { demoAction({ action: "skip" }); });
+  $("demoStop").addEventListener("click", function () { demoAction({ action: "stop" }); });
+  Array.prototype.forEach.call(document.querySelectorAll('input[name="demoSpeed"]'), function (r) {
+    r.addEventListener("change", function () {
+      if (demo.active && demo.kind === "demo") demoAction({ action: "speed", speed: speed() });
+    });
+  });
+
+  // ---------------------------------------------------------------- the Pi's screen
+  var picBusy = false, picRetry = 0;
+  function refreshPic() {
+    if (document.hidden || picBusy || Date.now() < picRetry) return;
+    picBusy = true;
+    var img = new Image();
+    img.onload = function () {
+      $("tftPic").src = img.src;
+      $("tftFrame").hidden = false;
+      $("tftNone").hidden = true;
+      picBusy = false;
+    };
+    img.onerror = function () {
+      $("tftFrame").hidden = true;
+      $("tftNone").hidden = false;
+      picBusy = false;
+      picRetry = Date.now() + 15000;
+    };
+    img.src = "screen.png?t=" + Date.now();
+  }
+  function loadScreen() {
+    api("GET", "api/screen").then(function (j) {
+      $("flip").checked = !!j.flip;
+      $("clock24").checked = !!j.clock_24h;
+      $("screenTitle").parentNode.hidden = j.display === "hdmi";   // a monitor: nothing to show or turn
+    }, function () {});
+  }
+  $("flip").addEventListener("change", function () {
+    var want = $("flip").checked;
+    api("POST", "api/screen", { flip: want }).then(function (j) {
+      $("flip").checked = !!j.flip;
+      say("screenMsg", j.flip ? "The picture on the Pi is now upside down." : "The picture on the Pi is now the right way up.", "ok");
+    }, function (err) {
+      $("flip").checked = !want;
+      say("screenMsg", err.message, "err");
+    });
+  });
+
+  $("clock24").addEventListener("change", function () {
+    var want = $("clock24").checked;
+    api("POST", "api/screen", { clock_24h: want }).then(function (j) {
+      $("clock24").checked = !!j.clock_24h;
+      say("screenMsg", j.clock_24h ? "Times on the Pi's screen are now 24-hour." : "Times on the Pi's screen are now 12-hour.", "ok");
+    }, function (err) {
+      $("clock24").checked = !want;
+      say("screenMsg", err.message, "err");
+    });
+  });
+
+  $("touchCal").addEventListener("click", function () {
+    api("POST", "api/touch", { action: "calibrate" }).then(function () {
+      say("screenMsg", "Dots are on the Pi's screen now. Touch the middle of each one.", "ok");
+    }, function (err) { say("screenMsg", err.message, "err"); });
+  });
+
+  // ---------------------------------------------------------------- the plate on the Z1
+  // Cut areas come as grids of 0.5 mm cells: one hex string per row, lowest bit = first column.
+  var RES = 0.5, armedNew = false, armedCut = null, plateData = null;
+  var BY = { pi: "started on the Pi", app: "from Makera Studio", hand: "added by hand", kit: "in the starting plate record" };
+  function fmtMm(v) { return String(Math.round(v * 10) / 10); }
+  function when(t) {
+    if (!t) return "";
+    var d = new Date(t * 1000);
+    return d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) + " " +
+      d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  }
+  function drawGrid(ctx, g, ox, oy, s, ph, color) {
+    if (!g || !g.rows) return;
+    ctx.fillStyle = color;
+    g.rows.forEach(function (hex, i) {
+      var r = g.r0 + i, y = oy + (ph - (r + 1) * RES) * s, run = -1, n = hex.length;
+      for (var b = 0; b <= n * 4; b++) {
+        var on = false;
+        if (b < n * 4) {
+          var v = parseInt(hex.charAt(n - 1 - (b >> 2)), 16);
+          on = ((v >> (b & 3)) & 1) === 1;
+        }
+        if (on && run < 0) run = b;
+        if (!on && run >= 0) {
+          ctx.fillRect(ox + (g.c0 + run) * RES * s, y, (b - run) * RES * s, RES * s + 0.4);
+          run = -1;
+        }
+      }
+    });
+  }
+  function drawPlate(j) {
+    var cv = $("plateCanvas"), ctx = cv.getContext("2d");
+    var pw = j.plate.w, ph = j.plate.h, pad = 14, foot = 26;
+    var s = Math.min((cv.width - 2 * pad) / pw, (cv.height - pad - foot) / ph);
+    var ox = pad, oy = pad;
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    ctx.fillStyle = "#b39b5e"; ctx.fillRect(ox - 3, oy - 3, pw * s + 6, ph * s + 6);
+    ctx.fillStyle = "#5c4e2e"; ctx.fillRect(ox, oy, pw * s, ph * s);
+    j.cuts.forEach(function (c) {
+      drawGrid(ctx, c.area, ox, oy, s, ph, c.state === "started" ? "#8a6420" : "#7e2c24");
+    });
+    ctx.lineWidth = 1.5; ctx.strokeStyle = "rgba(244,240,232,.55)"; ctx.fillStyle = "rgba(244,240,232,.8)";
+    ctx.font = "600 15px Barlow, Arial, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    (j.layouts || []).forEach(function (lay) {
+      lay.spots.forEach(function (sp) {
+        var cx = ox + sp.cx * s, cy = oy + (ph - sp.cy) * s, r = sp.d * s / 2;
+        ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+      });
+    });
+    ctx.fillStyle = "#f4f0e8"; ctx.font = "700 16px Barlow, Arial, sans-serif";
+    j.cuts.forEach(function (c, i) {
+      if (!c.box) return;
+      ctx.fillText(String(i + 1), ox + (c.box[0] + c.box[2]) / 2 * s, oy + (ph - (c.box[1] + c.box[3]) / 2) * s);
+    });
+    ctx.font = "600 13px Barlow, Arial, sans-serif"; ctx.textBaseline = "alphabetic";
+    ctx.fillStyle = "#aaa397"; ctx.fillText("FRONT", ox + pw * s / 2, oy + ph * s + 20);
+    ctx.textAlign = "left"; ctx.fillStyle = "#58c26b"; ctx.fillText("A1", ox - 2, oy + ph * s + 20);
+    cv.setAttribute("aria-label", "Plate " + pw + " by " + ph + " mm with " + j.cuts.length + " cut areas");
+  }
+  function plateAction(body, okText) {
+    return api("POST", "api/plate", body).then(function (j) {
+      showPlate(j);
+      say("platesMsg", okText, "ok");
+    }, function (err) { say("platesMsg", err.message, "err"); });
+  }
+  function showPlate(j) {
+    plateData = j;
+    $("platesSection").hidden = false;
+    var p = j.plate;
+    var notSet = p.set === false;
+    $("plateSize").textContent = notSet
+      ? "Plate size not set. Enter it under Plate size."
+      : (p.material || "Plate") + " " + fmtMm(p.w) + " \u00d7 " + fmtMm(p.h) + " \u00d7 " + fmtMm(p.t) +
+        " mm in the Anchor 1 corner. " + (j.cuts.length ? j.cuts.length + " cut area" + (j.cuts.length === 1 ? "" : "s") + "." : "Nothing cut on it.");
+    if (notSet) { $("sizeMore").open = true; } else { $("pw").value = p.w; $("ph").value = p.h; $("pt").value = p.t; $("pm").value = p.material || ""; }
+    var ol = $("cutList");
+    ol.textContent = "";
+    j.cuts.forEach(function (c) {
+      var li = el("li", ""), row = el("div", "row");
+      row.appendChild(el("span", "nm", c.name));
+      row.appendChild(el("span", "st " + c.state, (c.state === "started" ? "partly cut" : "cut") +
+        (c.known ? "" : " (area not known yet)") + (BY[c.by] ? ", " + BY[c.by] : "") + (c.t ? ", " + when(c.t) : "")));
+      var b = el("button", "btn small danger" + (armedCut === c.id ? " armed" : ""), armedCut === c.id ? "Tap again to remove" : "Remove");
+      b.type = "button";
+      b.addEventListener("click", function () {
+        if (armedCut !== c.id) { armedCut = c.id; showPlate(plateData); return; }
+        armedCut = null;
+        plateAction({ action: "remove", id: c.id }, c.name + " removed from the plate record.");
+      });
+      row.appendChild(b);
+      li.appendChild(row);
+      ol.appendChild(li);
+    });
+    $("plateUnknown").hidden = !j.unknown;
+    $("plateUnknown").textContent = j.unknown || "";
+    var nb = $("newPlate");
+    nb.className = "btn danger" + (armedNew ? " armed" : "");
+    nb.textContent = armedNew ? "Tap again: nothing cut on the plate" : "New plate";
+    var prev = j.previous;
+    $("lastPlate").hidden = !prev;
+    $("lastPlateNote").hidden = !prev;
+    $("lastPlateNote").textContent = prev ? "Brings back the plate before the last New plate, if it is still on the Z1: " +
+      (prev.material || "plate") + " " + fmtMm(prev.w) + " \u00d7 " + fmtMm(prev.h) + " \u00d7 " + fmtMm(prev.t) + " mm, " +
+      prev.cuts + " cut area" + (prev.cuts === 1 ? "" : "s") + (prev.names.length ? " (" + prev.names.slice(0, 4).join(", ") +
+      (prev.names.length > 4 ? " and " + (prev.names.length - 4) + " more" : "") + ")" : "") + ". The plate on record now is kept the same way." : "";
+    var sel = $("addFile"), keep = sel.value;
+    sel.textContent = "";
+    (j.files || []).forEach(function (f) {
+      var o = el("option", "", f.name + "  (" + f.folder.replace("/sd/gcodes/", "") + ")");
+      o.value = f.path;
+      sel.appendChild(o);
+    });
+    if (keep) sel.value = keep;
+    drawPlate(j);
+  }
+  $("newPlate").addEventListener("click", function () {
+    if (!armedNew) { armedNew = true; showPlate(plateData); return; }
+    armedNew = false;
+    plateAction({ action: "new" }, "New plate: nothing cut on it.");
+  });
+  $("lastPlate").addEventListener("click", function () {
+    armedNew = false;
+    plateAction({ action: "previous" }, "The last plate is back, with its cut areas.").then(loadSetup);
+  });
+  $("sizeForm").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    plateAction({ action: "size", w: $("pw").value, h: $("ph").value, t: $("pt").value, material: $("pm").value },
+      "Plate size saved.").then(loadSetup);
+  });
+  $("addFileForm").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    if (!$("addFile").value) return;
+    plateAction({ action: "add_file", path: $("addFile").value, offset: [Number($("addDx").value) || 0, Number($("addDy").value) || 0] },
+      "Area added.");
+  });
+  $("addRectForm").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    plateAction({ action: "add_rect", x0: $("rx0").value, x1: $("rx1").value, y0: $("ry0").value, y1: $("ry1").value,
+      name: $("rname").value }, "Area added.");
+  });
+  function loadPlates() {
+    api("GET", "api/plate").then(showPlate, function () {});
+  }
+
+  // ---------------------------------------------------------------- setup
+  var setup = null, setupFilled = false;
+  function mm(v) { return (Math.round(v * 1000) / 1000).toString(); }
+  function clock(t) { return t ? new Date(t * 1000).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }) : ""; }
+  function item(ok, text, href) {
+    var li = el("li", ""), mk = el("span", "mk " + (ok ? "ok" : "todo"), ok ? "\u2713" : "!");
+    mk.setAttribute("aria-label", ok ? "done" : "to do");
+    li.appendChild(mk);
+    var span = el("span", "");
+    if (href) { var a = el("a", "", text); a.href = href; span.appendChild(a); } else { span.textContent = text; }
+    li.appendChild(span);
+    return li;
+  }
+  function renderSetup(j) {
+    setup = j;
+    var ul = $("checklist");
+    ul.textContent = "";
+    ul.appendChild(item(j.machine.connected, j.machine.connected ? "Connected to " + (j.machine.name || "the Z1") + "." :
+      "Looking for the Z1. Check that it's on and on the same Wi-Fi."));
+    ul.appendChild(item(j.bits_saved, j.bits_saved ? "Bit colors set." : "Set bit colors to match your stickers.",
+      j.bits_saved ? "" : "#bitsTitle"));
+    ul.appendChild(item(j.plate_set, j.plate_set ? "Plate size set." : "Set the plate size.", j.plate_set ? "" : "#platesTitle"));
+    ul.appendChild(item(!!j.anchor.value, j.anchor.value ? "Anchor 1 known." : "Anchor 1 not known yet."));
+    if (j.display === "tft") ul.appendChild(item(j.touch_calibrated, j.touch_calibrated ? "Touch screen set up." :
+      "Set up the touch screen: touch the Pi's screen once.", j.touch_calibrated ? "" : "#screenTitle"));
+    ul.appendChild(item(true, j.start_from_screen ? "Starting from the touch screen: on." : "Starting from the touch screen: off (optional)."));
+
+    var a = j.anchor, auto = a.mode === "auto";
+    $("anchorAuto").checked = auto;
+    $("anchorManual").checked = !auto;
+    $("anchorForm").hidden = auto;
+    $("anchorReadRow").hidden = !auto;
+    var st;
+    if (auto) {
+      if (a.read) st = "X" + mm(a.read[0]) + " Y" + mm(a.read[1]) + " (read from the Z1).";
+      else if (!a.reading_allowed) st = "Reading from the Z1 is off in z1screen.json. Type it instead.";
+      else st = "Not read yet. The Pi reads it when the Z1 is idle and Makera Studio isn't connected through the Pi.";
+    } else {
+      st = "X" + mm(a.value[0]) + " Y" + mm(a.value[1]) + "." +
+        (a.read && (Math.abs(a.read[0] - a.value[0]) > 0.01 || Math.abs(a.read[1] - a.value[1]) > 0.01)
+          ? " The Z1 says X" + mm(a.read[0]) + " Y" + mm(a.read[1]) + "." : "");
+    }
+    $("anchorStatus").textContent = st;
+    if (!setupFilled && a.value) { $("ax").value = a.value[0]; $("ay").value = a.value[1]; }
+    $("appOrigin").textContent = j.app_origin ? "Makera Studio's last work origin: X" + mm(j.app_origin.x) + " Y" +
+      mm(j.app_origin.y) + ". With Anchor 1 and offsets 0, this should match." : "";
+
+    var on = !!j.start_from_screen;
+    $("startStatus").textContent = on ? "On." : "Off.";
+    $("startOnBox").hidden = on;
+    $("startOffRow").hidden = !on;
+
+    if (!setupFilled) {
+      var r = j.run_defaults;
+      $("runProbe").checked = r.probe === "middle";
+      $("runMargin").checked = !!r.margin;
+      $("runLevel").checked = !!r.level;
+      if (r.level) { $("runI").value = r.level.i; $("runJ").value = r.level.j; $("runH").value = r.level.h; }
+      $("layouts").value = (j.plate_layouts || []).join("\n");
+    }
+    $("pinRemove").hidden = !j.pin;
+    $("pinNote").textContent = j.pin ? "PIN set. Changes from other devices need it." : "No PIN. Anyone on your Wi-Fi can change settings.";
+    $("versionNote").textContent = "Version " + j.version;
+    renderNotify(j.notify, !setupFilled);
+    setupFilled = true;
+  }
+  function setupAction(body, msgId, okText) {
+    return api("POST", "api/setup", body).then(function (j) {
+      renderSetup(j);
+      if (msgId) say(msgId, okText, "ok");
+      return j;
+    }, function (err) { if (msgId) say(msgId, err.message, "err"); throw err; });
+  }
+  function loadSetup() {
+    return api("GET", "api/setup").then(renderSetup, function () {});
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('input[name="anchorMode"]'), function (r) {
+    r.addEventListener("change", function () {
+      if (r.value === "auto") {
+        setupAction({ anchor1: "auto" }, "anchorMsg", "Saved.").catch(function () {});
+      } else {
+        $("anchorForm").hidden = false;
+        $("anchorReadRow").hidden = true;
+        say("anchorMsg", "", "");
+      }
+    });
+  });
+  $("anchorForm").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    setupAction({ anchor1: [Number($("ax").value), Number($("ay").value)] }, "anchorMsg", "Saved.").catch(function () {});
+  });
+  $("anchorRead").addEventListener("click", function () {
+    setupAction({ read_anchor: true }, "anchorMsg", "Reading again while the Z1 is idle.").catch(function () {});
+  });
+  $("startEnable").addEventListener("click", function () {
+    setupAction({ start_from_screen: true, accept: $("startAccept").checked }, "startMsg",
+      "Turned on.").catch(function () {});
+  });
+  $("startDisable").addEventListener("click", function () {
+    $("startAccept").checked = false;
+    setupAction({ start_from_screen: false }, "startMsg", "Turned off.").catch(function () {});
+  });
+  $("runForm").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var level = $("runLevel").checked ? { i: Number($("runI").value), j: Number($("runJ").value), h: Number($("runH").value) } : null;
+    setupAction({ run_defaults: { probe: $("runProbe").checked ? "middle" : null, margin: $("runMargin").checked, level: level } },
+      "runMsg", "Saved.").catch(function () {});
+  });
+  $("layoutForm").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    setupAction({ plate_layouts: $("layouts").value }, "layoutMsg", "Saved.").then(function (j) {
+      $("layouts").value = (j.plate_layouts || []).join("\n");
+      loadPlates();
+    }, function () {});
+  });
+  $("pinForm").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var want = $("pinNew").value.trim();
+    if (!/^\d{4,12}$/.test(want)) { say("pinMsg", "The PIN must be 4 to 12 digits.", "err"); return; }
+    setupAction({ pin: want }, "pinMsg", "PIN saved.").then(function () {
+      pin = want; $("pinNew").value = "";
+    }, function () {});
+  });
+  $("pinRemove").addEventListener("click", function () {
+    setupAction({ pin: "" }, "pinMsg", "PIN removed.").then(function () { pin = ""; }, function () {});
+  });
+  $("pinAsk").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    pin = $("pinGiven").value.trim();
+    $("pinGiven").value = "";
+    say("pinAskMsg", "OK. Try again.", "ok");
+    setTimeout(function () { $("pinBox").hidden = true; say("pinAskMsg", "", ""); }, 2500);
+  });
+
+  // ---------------------------------------------------------------- phone notifications
+  function renderNotify(n, fill) {
+    if (!n) return;
+    var st = n.topic ? "On: topic " + n.topic + (n.server !== "https://ntfy.sh" ? " on " + n.server : "") + "." : "Off.";
+    if (n.last) st += n.last.ok ? " Last sent " + clock(n.last.t) + ": " + n.last.title + "." :
+      " Last one not sent (" + clock(n.last.t) + "): " + n.last.error + ".";
+    $("notifyStatus").textContent = st;
+    $("nOff").hidden = !n.topic;
+    $("nTest").hidden = !n.topic;
+    if (fill) {
+      $("nTopic").value = n.topic;
+      $("nStops").checked = !!n.stops;
+      $("nAlarms").checked = n.alarms !== false;
+      $("nPauses").checked = n.pauses !== false;
+      $("nSoon").value = n.soon_min || 0;
+      $("nServer").value = n.server === "https://ntfy.sh" ? "" : n.server;
+      $("nToken").placeholder = n.token_set ? "saved (type to replace)" : "none";
+    }
+  }
+  function randomTopic() {
+    var abc = "abcdefghijkmnopqrstuvwxyz23456789", out = "bitcue-", b = new Uint8Array(14);
+    (window.crypto || window.msCrypto).getRandomValues(b);
+    for (var i = 0; i < b.length; i++) out += abc.charAt(b[i] % abc.length);
+    return out;
+  }
+  function notifyBody(extra) {
+    var b = { server: $("nServer").value.trim() || "https://ntfy.sh", topic: $("nTopic").value.trim(),
+      stops: $("nStops").checked, alarms: $("nAlarms").checked, pauses: $("nPauses").checked,
+      soon_min: Number($("nSoon").value) || 0, token: null };
+    for (var k in extra) b[k] = extra[k];
+    return { notify: b };
+  }
+  $("nNewTopic").addEventListener("click", function () {
+    $("nTopic").value = randomTopic();
+    say("notifyMsg", "Press Save, then subscribe to this topic in the ntfy app.", "ok");
+  });
+  $("notifyForm").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    if (!$("nTopic").value.trim()) $("nTopic").value = randomTopic();
+    setupAction(notifyBody({}), "notifyMsg", "Saved. Subscribe to " + $("nTopic").value.trim() + " in the ntfy app.").catch(function () {});
+  });
+  $("notifyServerForm").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var t = $("nToken").value.trim();
+    setupAction(notifyBody(t ? { token: t } : {}), "notifyMsg", "Saved.").then(function () { $("nToken").value = ""; }, function () {});
+  });
+  $("nOff").addEventListener("click", function () {
+    $("nTopic").value = "";
+    setupAction(notifyBody({ topic: "" }), "notifyMsg", "Turned off.").catch(function () {});
+  });
+  $("nTest").addEventListener("click", function () {
+    say("notifyMsg", "Sending…", "");
+    api("POST", "api/notify/test", {}).then(function (n) {
+      renderNotify(n, false);
+      say("notifyMsg", "Sent. Check your phone.", "ok");
+    }, function (err) { say("notifyMsg", err.message, "err"); });
+  });
+
+  // ---------------------------------------------------------------- bit life
+  function mixHex(a, b, t) {
+    var out = "#";
+    for (var i = 1; i < 7; i += 2) {
+      var x = Math.round(parseInt(a.substr(i, 2), 16) * t + parseInt(b.substr(i, 2), 16) * (1 - t));
+      out += (x < 16 ? "0" : "") + x.toString(16);
+    }
+    return out;
+  }
+  function lifeColor(f) {        // the same as the Pi's screen: green, to yellow at 80 %, to red at 100 %
+    if (f <= 0.5) return "#3fb950";
+    if (f < 0.8) return mixHex("#e8b23a", "#3fb950", (f - 0.5) / 0.3);
+    if (f < 1) return mixHex("#ff5b4f", "#e8b23a", (f - 0.8) / 0.2);
+    return "#ff5b4f";
+  }
+  function hm(s) {
+    var m = Math.round((s || 0) / 60);
+    return m < 60 ? m + " min" : Math.floor(m / 60) + " h" + (m % 60 ? " " + (m % 60 < 10 ? "0" : "") + m % 60 : "");
+  }
+  function lifeAction(body, ok) {
+    return api("POST", "api/bitlife", body).then(function (j) { renderLife(j); say("lifeMsg", ok, "ok"); },
+      function (err) { say("lifeMsg", err.message, "err"); });
+  }
+  function usedText(b, mats) {
+    var parts = mats.filter(function (m) { return b.secs[m]; }).map(function (m) { return hm(b.secs[m]) + " in " + m; });
+    return (parts.join(", ") || "Not used yet") + " · " + b.jobs + (b.jobs === 1 ? " job" : " jobs");
+  }
+  function renderLife(info) {
+    var box = $("lifeList");
+    box.textContent = "";
+    if (!info.kinds.length) {
+      box.appendChild(el("p", "help", "Nothing counted yet. Each kind of bit shows here after the first job that uses it."));
+      return;
+    }
+    var mat = info.material;
+    info.kinds.forEach(function (k) {
+      var d = el("div", "life-kind");
+      d.appendChild(el("h3", "", k.label));
+      var mats = k.materials.slice();
+      if (mats.indexOf(mat) < 0) mats.push(mat);
+      var ul = el("ul", "life-bits");
+      k.bits.forEach(function (b) {
+        var used = b.secs[mat] || 0, lim = k.limits[mat] ? k.limits[mat] * 3600 : 0;
+        var li = el("li", "life-bit" + (lim && used >= lim ? " over" : lim && used >= 0.8 * lim ? " near" : ""));
+        li.appendChild(el("span", "life-label", b.label));
+        var main = el("div", "bit-main");
+        main.appendChild(el("span", "bit-name", usedText(b, mats)));
+        if (lim) {
+          main.appendChild(el("span", "bit-meta", hm(used) + " of " + hm(lim) + " in " + mat));
+          var g = el("span", "life-gauge"), gi = el("i", "");
+          gi.style.width = Math.max(2, Math.min(100, 100 * used / lim)) + "%";
+          gi.style.background = lifeColor(used / lim);
+          g.appendChild(gi); main.appendChild(g);
+        }
+        li.appendChild(main);
+        var out = el("button", "btn small ghost", "Took it out");
+        li.appendChild(out);
+        out.addEventListener("click", function () {
+          if (li.querySelector(".life-retire")) return;
+          var row = el("div", "life-retire"), sel = el("select", "");
+          Object.keys(info.reasons).forEach(function (r) {
+            var o = el("option", "", info.reasons[r]); o.value = r; sel.appendChild(o);
+          });
+          var note = el("input", ""); note.type = "text"; note.maxLength = 200; note.placeholder = "Note (optional)";
+          var go = el("button", "btn small danger", "Retire bit " + b.label), no = el("button", "btn small ghost", "Cancel");
+          go.addEventListener("click", function () {
+            lifeAction({ action: "retire", bit: b.id, reason: sel.value, note: note.value }, "Bit " + b.label + " retired.");
+          });
+          no.addEventListener("click", function () { row.remove(); });
+          [sel, note, go, no].forEach(function (x) { row.appendChild(x); });
+          li.appendChild(row);
+        });
+        ul.appendChild(li);
+      });
+      d.appendChild(ul);
+      var add = el("button", "btn small", "Add a bit of this kind");
+      add.addEventListener("click", function () { lifeAction({ action: "add", kind: k.key }, "Added."); });
+      var acts = el("div", "actions"); acts.appendChild(add); d.appendChild(acts);
+      var f = el("form", "grid4");
+      mats.forEach(function (m) {
+        var lab = el("label", "", "Expected life in " + m + ", h"), inp = el("input", "");
+        inp.type = "number"; inp.min = "0.1"; inp.step = "0.1"; inp.placeholder = "not set";
+        inp.value = k.limits[m] !== undefined ? k.limits[m] : ""; inp.dataset.material = m;
+        lab.appendChild(inp); f.appendChild(lab);
+        var lv = k.lives[m];
+        if (lv) f.appendChild(el("p", "help", "Worn out in " + m + ": " + lv.bits + (lv.bits === 1 ? " bit" : " bits") +
+          ", shortest " + hm(lv.shortest) + ", average " + hm(lv.average) +
+          (lv.suggested_hours ? ". Suggested: " + lv.suggested_hours + " h." : ".")));
+      });
+      var save = el("button", "btn small", "Save expected life"); save.type = "submit";
+      var sa = el("div", "actions"); sa.appendChild(save); f.appendChild(sa);
+      f.addEventListener("submit", function (ev) {
+        ev.preventDefault();
+        var inputs = f.querySelectorAll("input"), chain = Promise.resolve();
+        Array.prototype.forEach.call(inputs, function (inp) {
+          chain = chain.then(function () {
+            return api("POST", "api/bitlife", { action: "limit", kind: k.key, material: inp.dataset.material,
+              hours: inp.value.trim() === "" ? null : Number(inp.value) });
+          });
+        });
+        chain.then(function (j) { renderLife(j); say("lifeMsg", "Saved.", "ok"); },
+          function (err) { say("lifeMsg", err.message, "err"); });
+      });
+      d.appendChild(f);
+      if (k.history.length) {
+        var h = el("details", "more"), sm = el("summary", "", "Retired bits (" + k.history.length + ")"), hl = el("ul", "life-bits");
+        h.appendChild(sm);
+        k.history.forEach(function (b) {
+          var li = el("li", "life-bit");
+          li.appendChild(el("span", "life-label", b.label));
+          var main = el("div", "bit-main");
+          main.appendChild(el("span", "bit-name", usedText(b, k.materials)));
+          main.appendChild(el("span", "bit-meta", (info.reasons[b.reason] || b.reason) + " · " +
+            new Date(b.retired * 1000).toLocaleDateString() + (b.note ? " · " + b.note : "")));
+          li.appendChild(main);
+          hl.appendChild(li);
+        });
+        h.appendChild(hl);
+        d.appendChild(h);
+      }
+      box.appendChild(d);
+    });
+  }
+  function loadLife() {
+    api("GET", "api/bitlife").then(renderLife, function (err) { say("lifeMsg", err.message, "err"); });
+  }
+
+  loadLife();
+  loadSetup();
+  setInterval(function () { if (!document.hidden) loadSetup(); }, 5000);
+  loadScreen();
+  loadPlates();
+  refreshPic();
+  setInterval(refreshPic, 2000);
+  loadBits();
+  refreshDemo();
+  setInterval(function () { if (!document.hidden) refreshDemo(); }, 1000);
+})();
+</script>
+</body>
+</html>

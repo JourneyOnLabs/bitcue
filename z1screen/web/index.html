@@ -1,0 +1,708 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- page:start -->
+<title>BitCue</title>
+<style>
+/* fonts:local:start */
+@font-face { font-family: "Barlow"; font-weight: 400; font-display: swap; src: url("fonts/barlow-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "Barlow"; font-weight: 500; font-display: swap; src: url("fonts/barlow-latin-500-normal.woff2") format("woff2"); }
+@font-face { font-family: "Barlow"; font-weight: 600; font-display: swap; src: url("fonts/barlow-latin-600-normal.woff2") format("woff2"); }
+@font-face { font-family: "Barlow"; font-weight: 700; font-display: swap; src: url("fonts/barlow-latin-700-normal.woff2") format("woff2"); }
+@font-face { font-family: "Barlow Condensed"; font-weight: 500; font-display: swap; src: url("fonts/barlow-condensed-latin-500-normal.woff2") format("woff2"); }
+@font-face { font-family: "Barlow Condensed"; font-weight: 600; font-display: swap; src: url("fonts/barlow-condensed-latin-600-normal.woff2") format("woff2"); }
+@font-face { font-family: "Barlow Condensed"; font-weight: 700; font-display: swap; src: url("fonts/barlow-condensed-latin-700-normal.woff2") format("woff2"); }
+/* fonts:local:end */
+
+/* Layout: a machine-side panel read from across the shop. The next bit owns the
+   left two thirds in its sticker color, the clock times stack on the right, and
+   the whole job runs along the bottom as a bar split into the bits' colors.
+   At a tool change the entire screen turns the color of the bit to load. */
+:root {
+  --ground: #141311;
+  --panel: #1e1c19;
+  --line: #36322c;
+  --ink: #f4f0e8;
+  --muted: #aaa397;
+  --dim: #6e685e;
+  --stop: #ff5b4f;
+  --display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", "Helvetica Neue", Arial, sans-serif;
+  --body: "Barlow", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --gutter: clamp(16px, 3vw, 48px);
+  --gap: clamp(12px, 2.2vh, 28px);
+  --label: clamp(12px, 1.9vh, 22px);
+  --radius: clamp(8px, 1.4vh, 16px);
+  color-scheme: dark;
+}
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: clamp(15px, 2.2vh, 24px);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+.num { font-variant-numeric: tabular-nums; }
+.label {
+  font-family: var(--body);
+  font-weight: 600;
+  font-size: var(--label);
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.view { box-sizing: border-box; height: 100%; padding-block: clamp(14px, 3vh, 40px); padding-inline: var(--gutter); }
+
+/* ---------- running ---------- */
+#run { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: var(--gap); }
+.top { display: flex; align-items: center; gap: 16px; min-width: 0; }
+.job { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.job-name {
+  font-family: var(--display); font-weight: 600; font-size: clamp(20px, 3.6vh, 44px);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: .01em;
+}
+.pill {
+  flex: none; display: inline-flex; align-items: center; gap: .5em;
+  font-weight: 600; font-size: var(--label); letter-spacing: .08em; text-transform: uppercase;
+  padding: .55em 1em; border-radius: 999px; border: 1px solid var(--line); color: var(--ink); background: var(--panel);
+}
+.pill i { width: .7em; height: .7em; border-radius: 50%; background: #58c26b; display: block; }
+.pill[data-s="paused"] i { background: #e8b23a; }
+.pill[data-s="alarm"] i { background: var(--stop); }
+
+.main { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr); gap: var(--gap); min-height: 0; }
+.cards { display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: var(--gap); min-height: 0; }
+.cut, .strip { --c: #555; --t: #fff; background: var(--c); color: var(--t); border-radius: var(--radius); min-width: 0; }
+.cut {
+  padding: clamp(16px, 3vh, 40px) clamp(18px, 2.4vw, 44px);
+  display: grid; grid-template-rows: auto 1fr auto; gap: clamp(6px, 1.2vh, 16px);
+  min-height: 0; overflow: hidden;
+}
+.cut .label, .strip .label { color: inherit; opacity: .78; }
+.cut-head { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+.cut-bit { display: flex; align-items: center; gap: clamp(14px, 2vw, 36px); min-width: 0; }
+.code {
+  font-family: var(--display); font-weight: 700; line-height: .86;
+  font-size: clamp(72px, 19vh, 260px); letter-spacing: -.01em;
+}
+.bit-text { min-width: 0; display: flex; flex-direction: column; gap: .3em; }
+.bit-name { font-weight: 600; font-size: clamp(20px, 4.2vh, 56px); line-height: 1.05; text-wrap: balance; overflow-wrap: anywhere; }
+.sticker { font-weight: 500; font-size: clamp(14px, 2.6vh, 32px); opacity: .85; }
+.cut-gauge { font-size: clamp(16px, 3vh, 36px); height: .55em; border-radius: .3em; box-shadow: 0 0 0 3px #1d1b18; }
+.strip { display: flex; align-items: center; gap: .7em; padding: clamp(10px, 1.8vh, 22px) clamp(18px, 2.4vw, 44px); font-size: clamp(16px, 2.8vh, 34px); }
+.strip-code { font-family: var(--display); font-weight: 700; font-size: 1.6em; line-height: 1; }
+.strip-name { flex: 1; min-width: 0; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.strip-in { display: flex; align-items: baseline; gap: .5em; white-space: nowrap; }
+.strip-in .num:first-child { font-family: var(--display); font-weight: 700; font-size: 1.6em; line-height: 1; }
+.strip-in .at { font-weight: 500; opacity: .85; }
+.cut.none, .strip.none { background: var(--panel); color: var(--ink); border: 1px solid var(--line); }
+
+.times { display: grid; grid-template-rows: repeat(3, minmax(0, 1fr)); gap: var(--gap); min-height: 0; }
+.time {
+  background: var(--panel); border-radius: var(--radius);
+  padding: clamp(10px, 2vh, 26px) clamp(14px, 1.8vw, 30px);
+  display: flex; flex-direction: column; justify-content: center; gap: .25em; min-width: 0;
+}
+.time .v { font-family: var(--display); font-weight: 600; font-size: clamp(30px, 7vh, 96px); line-height: 1; white-space: nowrap; }
+.time .s { color: var(--muted); font-size: clamp(13px, 2vh, 24px); }
+
+.bottom { display: flex; flex-direction: column; gap: clamp(8px, 1.4vh, 16px); }
+.bar-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.now { display: block; min-width: 0; color: var(--ink); font-weight: 500; }
+.now b { font-weight: 700; }
+.now .dot { margin-right: .5em; vertical-align: -.05em; }
+.dot { display: inline-block; width: .9em; height: .9em; border-radius: 3px; background: var(--c, #777); flex: none; box-shadow: inset 0 0 0 1px rgba(0,0,0,.25); }
+.pct { font-family: var(--display); font-weight: 600; font-size: clamp(20px, 3.4vh, 42px); }
+.bar { position: relative; height: clamp(22px, 5vh, 56px); border-radius: 6px; background: var(--line); }
+.bar .layer { position: absolute; inset: 0; border-radius: 6px; overflow: hidden; }
+.bar .rest { opacity: .32; }
+.seg { position: absolute; top: 0; bottom: 0; background: var(--c); box-shadow: inset -3px 0 0 var(--ground);
+  display: flex; align-items: center; padding-left: .5em; box-sizing: border-box; overflow: hidden;
+  font-family: var(--display); font-weight: 700; font-size: clamp(13px, 2.6vh, 30px); color: var(--t); }
+.bar .rest .seg { color: transparent; }
+.marker { position: absolute; top: -8px; bottom: -8px; width: 4px; margin-left: -2px; border-radius: 2px; background: var(--ink); box-shadow: 0 0 0 3px var(--ground); }
+.plain { position: absolute; inset: 0; border-radius: 6px; overflow: hidden; }
+.plain i { display: block; height: 100%; background: var(--muted); }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; color: var(--muted); font-size: clamp(13px, 2vh, 22px); }
+.chip { display: inline-flex; align-items: center; gap: .45em; max-width: 100%; }
+.chip > span:last-child { min-width: 0; overflow-wrap: anywhere; }
+.chip.done { opacity: .45; }
+.chip.cur { color: var(--ink); font-weight: 600; }
+.chip.nx { color: var(--ink); font-weight: 600; text-decoration: underline; text-underline-offset: .25em; text-decoration-thickness: 2px; }
+
+/* a bit with no sticker color set: striped gray, so it can't pass for a sticker color */
+.unset { background-image: repeating-linear-gradient(135deg, rgba(255,255,255,.10) 0 .35em, rgba(0,0,0,.12) .35em .7em); }
+.cut.unset, .strip.unset, #change.unset { background-image: repeating-linear-gradient(135deg, rgba(255,255,255,.07) 0 26px, rgba(0,0,0,.10) 26px 52px); }
+
+/* demo and color check: a strip across the top of every screen */
+.demo-tag {
+  position: fixed; left: 0; right: 0; top: 0; z-index: 7; box-sizing: border-box;
+  min-height: calc(var(--label) * 2.6 + env(safe-area-inset-top, 0px));
+  padding: env(safe-area-inset-top, 0px) var(--gutter) 0;
+  display: flex; align-items: center; justify-content: center; gap: .4em 1em; flex-wrap: wrap;
+  background: #000; color: #fff; font-weight: 600; font-size: var(--label); letter-spacing: .06em; text-transform: uppercase;
+}
+.demo-tag b { background: #ffd600; color: #000; padding: .2em .6em; border-radius: 4px; letter-spacing: .14em; }
+.demo-tag span:last-child { color: #c9c3b8; }
+body.is-demo .view { padding-top: calc(clamp(14px, 3vh, 40px) + var(--label) * 2.6 + env(safe-area-inset-top, 0px)); }
+
+/* ---------- tool change ---------- */
+#change { --c: #555; --t: #fff; background: var(--c); color: var(--t); display: grid; grid-template-rows: auto 1fr auto; gap: var(--gap); }
+#change .label { color: inherit; opacity: .8; }
+.chg-top { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.chg-main { display: flex; flex-direction: column; justify-content: center; gap: clamp(6px, 1.4vh, 18px); min-height: 0; }
+.load { font-family: var(--display); font-weight: 700; font-size: clamp(28px, 7vh, 90px); letter-spacing: .06em; text-transform: uppercase; line-height: 1; }
+.load-row { display: flex; align-items: center; justify-content: space-between; gap: 12px 24px; flex-wrap: wrap; }
+/* the bit coming out: a box in the color of the container it goes back into */
+.out { --oc: #555; --ot: #fff; background-color: var(--oc); color: var(--ot); box-shadow: 0 0 0 3px var(--t);
+  font-weight: 700; font-size: clamp(16px, 3.6vh, 46px); letter-spacing: .05em; text-transform: uppercase;
+  line-height: 1.1; padding: .3em .75em; border-radius: var(--radius); overflow-wrap: anywhere; }
+.big-code { font-family: var(--display); font-weight: 700; font-size: clamp(110px, 34vh, 470px); line-height: .82; letter-spacing: -.015em; }
+.big-name { font-weight: 600; font-size: clamp(26px, 6.4vh, 86px); line-height: 1.05; text-wrap: balance; overflow-wrap: anywhere; }
+.big-sticker { font-weight: 500; font-size: clamp(18px, 3.6vh, 46px); opacity: .9; }
+.big-bit { align-self: stretch; max-width: 40em; display: flex; flex-direction: column; gap: .35em; padding: .45em .7em .55em; border-radius: .5em; background: #1d1b18; color: #fff; font-weight: 700; font-size: clamp(16px, 3vh, 36px); }
+.big-bit[hidden] { display: none; }
+.gauge { position: relative; height: .42em; border-radius: .21em; background: #4a4640; overflow: hidden; }
+.gauge i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: inherit; }
+.bit-warn { margin: 0 0 12px; padding: 10px 14px; border-radius: 10px; background: #e8b23a; color: #151412; font-weight: 600; }
+.chg-foot { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px 32px; flex-wrap: wrap; border-top: 3px solid currentColor; padding-top: clamp(10px, 2vh, 24px); }
+.press { font-weight: 700; font-size: clamp(20px, 4.4vh, 58px); line-height: 1.1; max-width: 32ch; text-wrap: balance; }
+.after { font-size: clamp(14px, 2.6vh, 32px); font-weight: 500; opacity: .9; text-align: right; overflow-wrap: anywhere; }
+@media (prefers-reduced-motion: no-preference) {
+  .load { animation: blink 1.6s ease-in-out infinite; }
+  @keyframes blink { 50% { opacity: .45; } }
+}
+
+/* ---------- stopped ---------- */
+#alarm { box-shadow: inset 0 0 0 clamp(10px, 2vh, 22px) var(--stop); display: flex; flex-direction: column; justify-content: center; gap: clamp(10px, 2.4vh, 30px); padding-inline: calc(var(--gutter) + 2vh); }
+.alarm-title { font-family: var(--display); font-weight: 700; font-size: clamp(54px, 15vh, 200px); line-height: .9; color: var(--stop); }
+.alarm-why { font-weight: 600; font-size: clamp(22px, 5.4vh, 72px); line-height: 1.1; max-width: 26ch; text-wrap: balance; }
+.alarm-help { color: var(--muted); font-size: clamp(16px, 3vh, 36px); max-width: 44ch; }
+
+/* ---------- ready / messages ---------- */
+#idle, #msg { display: flex; flex-direction: column; justify-content: center; gap: clamp(10px, 2.2vh, 28px); }
+.idle-title { font-family: var(--display); font-weight: 700; font-size: clamp(64px, 18vh, 240px); line-height: .9; }
+.idle-machine { font-weight: 600; font-size: clamp(18px, 3.6vh, 44px); color: var(--muted); }
+.last { display: flex; align-items: center; gap: clamp(12px, 2vw, 28px); padding: clamp(12px, 2.4vh, 30px) clamp(16px, 2vw, 34px); background: var(--panel); border-radius: var(--radius); max-width: 60rem; }
+.last-text { display: flex; flex-direction: column; gap: .5em; min-width: 0; }
+/* the picture of the job's part (drawn by the Pi from the job file) */
+.part { flex: none; width: clamp(56px, 11vh, 140px); height: clamp(56px, 11vh, 140px); object-fit: contain; border-radius: 10px; background: rgba(0, 0, 0, .25); }
+.last-name { font-weight: 600; font-size: clamp(18px, 3.4vh, 42px); overflow-wrap: anywhere; }
+.last-meta { color: var(--muted); font-size: clamp(14px, 2.4vh, 30px); }
+.hint { color: var(--muted); font-size: clamp(14px, 2.4vh, 30px); max-width: 56ch; margin: 0; }
+.hint b { color: var(--ink); font-weight: 600; }
+.msg-title { font-family: var(--display); font-weight: 700; font-size: clamp(44px, 11vh, 150px); line-height: .95; text-wrap: balance; }
+
+.banner { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); transform: translateX(-50%);
+  background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 999px; padding: .5em 1.1em; font-size: var(--label); font-weight: 600; z-index: 5; }
+
+/* narrow screens and phones: stack, allow scrolling */
+@media (max-width: 760px), (max-aspect-ratio: 4/5) {
+  body { overflow: auto; }
+  .view { height: auto; min-height: 100%; }
+  #run { grid-template-rows: auto auto auto; }
+  .main { grid-template-columns: minmax(0, 1fr); }
+  .times { grid-template-rows: none; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .time .v { font-size: clamp(24px, 7vw, 44px); }
+  .code { font-size: clamp(76px, 24vw, 150px); }
+  .bit-name { font-size: clamp(20px, 6vw, 34px); }
+  .strip { flex-wrap: wrap; }
+  .strip-name { flex-basis: 100%; order: 3; white-space: normal; }
+  .strip-in { order: 4; }
+  .big-code { font-size: clamp(110px, 38vw, 260px); }
+  .big-name { font-size: clamp(24px, 8vw, 48px); }
+  .idle-title { font-size: clamp(56px, 26vw, 150px); }
+  .msg-title { font-size: clamp(36px, 11vw, 72px); }
+  .alarm-title { font-size: clamp(44px, 14vw, 96px); }
+  .press { font-size: clamp(20px, 6vw, 34px); }
+  .after { text-align: left; }
+  .job-name { white-space: normal; overflow-wrap: anywhere; }
+}
+@media (max-width: 420px) {
+  .times { grid-template-columns: minmax(0, 1fr); }
+  .cut-bit { flex-direction: column; align-items: flex-start; }
+}
+</style>
+<!-- head:end -->
+</head>
+<body>
+<section id="run" class="view" hidden>
+  <div class="top">
+    <img class="part" id="jobPic" alt="" hidden>
+    <div class="job">
+      <span class="label">Job</span>
+      <span class="job-name" id="jobName">-</span>
+    </div>
+    <span class="pill" id="pill" data-s="run"><i></i><span id="pillText">Running</span></span>
+  </div>
+  <p class="bit-warn" id="jobBitWarn" hidden></p>
+  <div class="main">
+    <div class="cards">
+      <div class="cut" id="cut">
+        <div class="cut-head">
+          <span class="label" id="cutHead">Cutting now</span>
+          <span class="label" id="cutBitLabel"></span>
+        </div>
+        <div class="cut-bit">
+          <span class="code" id="cutCode">-</span>
+          <span class="bit-text">
+            <span class="bit-name" id="cutName"></span>
+            <span class="sticker" id="cutSub"></span>
+          </span>
+        </div>
+        <span class="gauge cut-gauge" id="cutGauge" hidden><i id="cutThen"></i><i id="cutUsed"></i></span>
+      </div>
+      <div class="strip" id="next">
+        <span class="label" id="nextWord">Next</span>
+        <span class="strip-code" id="nextCode"></span>
+        <span class="strip-name" id="nextName"></span>
+        <span class="strip-in"><span class="num" id="nextIn"></span><span class="at num" id="nextAt"></span></span>
+      </div>
+    </div>
+    <div class="times">
+      <div class="time"><span class="label">Elapsed</span><span class="v num" id="elapsed">-</span><span class="s" id="elapsedSub">machine time</span></div>
+      <div class="time"><span class="label">Time left</span><span class="v num" id="left">-</span><span class="s num" id="leftSub"></span></div>
+      <div class="time"><span class="label">Tool changes left</span><span class="v num" id="changesLeft">-</span><span class="s num" id="changesSub"></span></div>
+    </div>
+  </div>
+  <div class="bottom">
+    <div class="bar-head">
+      <span class="now" id="nextCount"></span>
+      <span class="pct num" id="pct">0%</span>
+    </div>
+    <div class="bar" id="bar" role="img" aria-label="Job progress"></div>
+    <div class="legend" id="legend"></div>
+  </div>
+</section>
+
+<section id="change" class="view" hidden aria-live="assertive">
+  <div class="chg-top">
+    <span class="label num" id="chgCount">Tool change</span>
+    <span class="label" id="chgJob"></span>
+  </div>
+  <div class="chg-main">
+    <div class="load-row">
+      <span class="load" id="chgLoad">Load</span>
+      <span class="out" id="chgOut" hidden></span>
+    </div>
+    <span class="big-code" id="chgCode">-</span>
+    <span class="big-name" id="chgName"></span>
+    <span class="big-sticker" id="chgSticker"></span>
+    <span class="big-bit" id="chgBit" hidden><span id="chgBitText"></span><span class="gauge"><i id="chgBitThen"></i><i id="chgBitUsed"></i></span></span>
+  </div>
+  <div class="chg-foot">
+    <span class="press" id="chgPress">Then press the front button once.</span>
+    <span class="after num" id="chgAfter"></span>
+  </div>
+</section>
+
+<section id="alarm" class="view" hidden aria-live="assertive">
+  <span class="label">BitCue</span>
+  <span class="alarm-title">Machine stopped</span>
+  <span class="alarm-why" id="alarmWhy"></span>
+  <span class="alarm-help" id="alarmHelp"></span>
+</section>
+
+<section id="idle" class="view" hidden>
+  <span class="label">BitCue</span>
+  <span class="idle-title" id="idleTitle">Ready</span>
+  <span class="idle-machine" id="idleMachine"></span>
+  <div class="last" id="last" hidden>
+    <img class="part" id="lastPic" alt="" hidden>
+    <div class="last-text">
+      <span class="label" id="lastLabel">Last job</span>
+      <span class="last-name" id="lastName"></span>
+      <span class="last-meta num" id="lastMeta"></span>
+    </div>
+  </div>
+  <p class="hint" id="idleHint"></p>
+  <p class="hint" id="idleSettings"></p>
+</section>
+
+<section id="msg" class="view">
+  <span class="label">BitCue</span>
+  <span class="msg-title" id="msgTitle">Starting</span>
+  <p class="hint" id="msgText">Getting ready.</p>
+</section>
+
+<div class="banner" id="banner" hidden>Lost contact with the screen service. Retrying.</div>
+<div class="demo-tag" id="demoTag" hidden><b id="demoKind">Demo</b><span id="demoText">Practice run, not the Z1</span><span id="demoEnds"></span></div>
+<!-- demo:slot -->
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var views = ["run", "change", "alarm", "idle", "msg"];
+  var last = null;
+  var lastAt = 0;
+
+  function show(id) {
+    views.forEach(function (v) { $(v).hidden = v !== id; });
+  }
+  function dur(s) {
+    if (s === null || s === undefined || isNaN(s)) return "-";
+    s = Math.max(0, Math.round(s));
+    if (s < 60) return "under 1 min";
+    var h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+    if (h === 0) return m + " min";
+    return h + " h " + (m < 10 ? "0" : "") + m + " min";
+  }
+  // The demo plays faster than real time and sends its own time of day.
+  function nowMs() { return last && last.clock ? last.clock * 1000 : Date.now(); }
+  function clock(s) {
+    if (s === null || s === undefined || isNaN(s)) return "";
+    var d = new Date(nowMs() + s * 1000);
+    try { return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }); }
+    catch (e) { return d.getHours() + ":" + String(d.getMinutes()).padStart(2, "0"); }
+  }
+  function setColor(el, info) {
+    el.style.setProperty("--c", info ? info.color : "#555");
+    el.style.setProperty("--t", info ? info.text : "#fff");
+    el.classList.toggle("unset", !!(info && info.unset));
+  }
+  function stickerText(info) {
+    if (!info) return "";
+    if (info.unset) return "No sticker color set";
+    return info.sticker ? info.sticker + " sticker" : "";
+  }
+  function shortUrl(u) { return (u || "").replace(/^https?:\/\//, ""); }
+  // what the box for the bit coming out says (the small screen's longest wording)
+  function outWords(o) {
+    var code = o.tool === 0 ? "Probe" : o.code;
+    if (o.tool === 0 || o.tool === 8888 || o.tool === 9999) return code + " out";
+    if (o.unset || !o.sticker) return code + " out, no color set";
+    return code + " back in " + o.sticker;
+  }
+  function codeText(info) {
+    if (!info) return "-";
+    return info.tool === 0 ? "Probe" : info.code;
+  }
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+
+  function setPart(img, md5) {
+    var src = md5 ? "preview/" + md5 + ".png" : "";
+    if (img.getAttribute("src") !== src) { if (src) img.src = src; else img.removeAttribute("src"); }
+    img.hidden = !md5;
+  }
+
+  function renderRun(v) {
+    var j = v.job;
+    $("jobName").textContent = j.name || "Job";
+    setPart($("jobPic"), j.preview);
+    var bw = $("jobBitWarn");
+    bw.hidden = !(j.bit_warnings && j.bit_warnings.length);
+    bw.textContent = bw.hidden ? "" : j.bit_warnings.join(" ");
+    var pill = $("pill");
+    pill.dataset.s = v.mode === "paused" ? "paused" : "run";
+    $("pillText").textContent = v.mode === "paused" ? "Paused" : "Running";
+
+    // the big card: the bit cutting now, in its color, with its bit and how long that bit has cut
+    var cur = j.now, cut = $("cut"), b = cur && cur.bit;
+    var probe = !!cur && cur.tool === 0;
+    cut.classList.toggle("none", !cur);
+    setColor(cut, cur || null);
+    $("cutHead").textContent = probe ? "Probing" : v.mode === "paused" ? "Paused with" : "Cutting now";
+    $("cutBitLabel").textContent = b ? "Bit " + b.label : "";
+    $("cutCode").textContent = cur ? codeText(cur) : "";
+    $("cutCode").hidden = !cur;
+    $("cutName").textContent = !cur ? "The Z1 hasn't said which bit is in" : probe ? "Wired probe" : (cur.label || "");
+    $("cutSub").textContent = cur && cur.unset ? stickerText(cur) : b ?
+      "Bit " + b.label + " · " + b.used_text + (b.limit ? " of " + hm(b.limit) : "") + " used" : "";
+    var g = $("cutGauge");
+    g.hidden = !(b && b.limit);
+    if (b && b.limit) {
+      var used = b.used / b.limit, then = (b.used + (b.job_adds || 0)) / b.limit;
+      $("cutUsed").style.width = Math.max(2, Math.min(100, 100 * used)) + "%";
+      $("cutUsed").style.background = lifeColor(used);
+      $("cutThen").style.width = used < 1 ? Math.min(100, 100 * then) + "%" : "0";
+      $("cutThen").style.background = lifeColor(then);
+      $("cutThen").style.opacity = ".45";
+    }
+
+    // the strip: the next bit, in its color, and when its stop comes
+    var nx = j.next, strip = $("next");
+    strip.classList.toggle("none", !nx);
+    setColor(strip, nx || null);
+    $("nextCount").textContent = nx && nx.index && nx.total ? "Tool change " + nx.index + " of " + nx.total : "";
+    if (nx) {
+      $("nextWord").textContent = "Next";
+      $("nextCode").textContent = codeText(nx);
+      $("nextName").textContent = (nx.label || "") + (nx.unset ? " · no color set" : nx.bit ? " · bit " + nx.bit.label : "");
+      $("nextIn").textContent = "in " + dur(nx.in);
+      $("nextAt").textContent = nx.in !== null && nx.in !== undefined ? "around " + clock(nx.in) : "";
+    } else if (j.known) {
+      $("nextWord").textContent = "Last bit";
+      $("nextCode").textContent = "";
+      $("nextName").textContent = "No more tool changes";
+      $("nextIn").textContent = "done in " + dur(j.left);
+      $("nextAt").textContent = j.left !== null && j.left !== undefined ? "around " + clock(j.left) : "";
+    } else {
+      $("nextWord").textContent = "";
+      $("nextCode").textContent = "";
+      $("nextName").textContent = j.loading ? "Reading the job file. One moment." :
+        "Next bit not known for this file. Press Select on it in Makera Studio once.";
+      $("nextIn").textContent = "";
+      $("nextAt").textContent = "";
+    }
+
+    $("elapsed").textContent = dur(j.elapsed);
+    $("left").textContent = dur(j.left);
+    $("leftSub").textContent = j.left !== null && j.left !== undefined ? "done around " + clock(j.left) : "";
+    if (j.known) {
+      $("changesLeft").textContent = String(j.changes_left);
+      $("changesSub").textContent = "of " + j.changes_total + " in this job";
+    } else {
+      $("changesLeft").textContent = "-";
+      $("changesSub").textContent = "";
+    }
+
+    var pct = Math.max(0, Math.min(100, j.percent || 0));
+    $("pct").textContent = Math.floor(pct) + "%";
+
+    var bar = $("bar");
+    bar.textContent = "";
+    bar.setAttribute("aria-label", "Job progress " + Math.floor(pct) + " percent");
+    if (j.segments && j.segments.length) {
+      var rest = el("div", "layer rest"), done = el("div", "layer done");
+      done.style.clipPath = "inset(0 " + (100 - pct) + "% 0 0)";
+      j.segments.forEach(function (s) {
+        [rest, done].forEach(function (layer) {
+          var e = el("div", "seg" + (s.unset ? " unset" : ""), (s.end - s.start) > 0.05 ? (s.tool === 0 ? "P" : s.code) : "");
+          e.style.left = (s.start * 100) + "%";
+          e.style.width = ((s.end - s.start) * 100) + "%";
+          e.style.setProperty("--c", s.color);
+          var info = (j.next && j.next.tool === s.tool) ? j.next : null;
+          e.style.setProperty("--t", info ? info.text : textOn(s.color));
+          layer.appendChild(e);
+        });
+      });
+      bar.appendChild(rest);
+      bar.appendChild(done);
+    } else {
+      var plain = el("div", "plain"), fill = el("i");
+      fill.style.width = pct + "%";
+      plain.appendChild(fill);
+      bar.appendChild(plain);
+    }
+    var mk = el("div", "marker"); mk.style.left = pct + "%";
+    bar.appendChild(mk);
+
+    var lg = $("legend");
+    lg.textContent = "";
+    var nextIdx = nx ? nx.index - 1 : (j.segments ? j.segments.length : 0);
+    (j.segments || []).forEach(function (s, i) {
+      var c = el("span", "chip");
+      if (i < nextIdx - 1) c.classList.add("done");
+      if (i === nextIdx - 1) c.classList.add("cur");
+      if (i === nextIdx) c.classList.add("nx");
+      var d = el("span", "dot" + (s.unset ? " unset" : "")); d.style.setProperty("--c", s.color);
+      c.appendChild(d);
+      var info = (v.legend || []).filter(function (t) { return t.tool === s.tool; })[0];
+      c.appendChild(el("span", "", (s.tool === 0 ? "Probe" : s.code) + (info && info.label ? " " + info.label : "")));
+      lg.appendChild(c);
+    });
+    show("run");
+  }
+
+  function textOn(hex) {
+    var h = (hex || "").replace("#", "");
+    if (h.length !== 6) return "#fff";
+    var c = [0, 2, 4].map(function (i) {
+      var x = parseInt(h.substr(i, 2), 16) / 255;
+      return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);
+    });
+    var L = 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+    return L > 0.3 ? "#111111" : "#ffffff";
+  }
+
+  // a bit's life gauge (the same colors as the Pi's screen): green, to yellow at 80 %, to red at 100 %
+  function mixHex(a, b, t) {
+    var out = "#";
+    for (var i = 1; i < 7; i += 2) {
+      var x = Math.round(parseInt(a.substr(i, 2), 16) * t + parseInt(b.substr(i, 2), 16) * (1 - t));
+      out += (x < 16 ? "0" : "") + x.toString(16);
+    }
+    return out;
+  }
+  function hm(s) {               // 45 min, 2 h 10, 3 h (a bit's time, the same as the Pi's screen)
+    var m = Math.round((s || 0) / 60);
+    return m < 60 ? m + " min" : Math.floor(m / 60) + " h" + (m % 60 ? " " + (m % 60 < 10 ? "0" : "") + m % 60 : "");
+  }
+  function lifeColor(f) {
+    if (f <= 0.5) return "#3fb950";
+    if (f < 0.8) return mixHex("#e8b23a", "#3fb950", (f - 0.5) / 0.3);
+    if (f < 1) return mixHex("#ff5b4f", "#e8b23a", (f - 0.8) / 0.2);
+    return "#ff5b4f";
+  }
+  function renderChange(v) {
+    var tc = v.toolchange;
+    var box = $("change");
+    setColor(box, tc);
+    var probe = tc.tool === 0;
+    $("chgLoad").textContent = probe ? "Load the probe" : "Load";
+    var out = tc.out, oc = $("chgOut");
+    oc.hidden = !out;
+    if (out) {
+      oc.style.setProperty("--oc", out.color);
+      oc.style.setProperty("--ot", out.text);
+      oc.classList.toggle("unset", !!out.unset);
+      oc.textContent = outWords(out);
+    }
+    $("chgCode").textContent = probe ? "Probe" : tc.code;
+    $("chgCode").hidden = probe;
+    $("chgName").textContent = probe ? "Wired probe" : (tc.label || "");
+    $("chgSticker").textContent = probe ? "" : (tc.unset && v.settings_url
+      ? "No sticker color set. Choose one at " + shortUrl(v.settings_url)
+      : tc.unset ? stickerText(tc) : "");
+    $("chgCount").textContent = tc.index && tc.total ? "Tool change " + tc.index + " of " + tc.total : "Tool change";
+    $("chgJob").textContent = v.job && v.job.name ? v.job.name : "";
+    var bit = probe ? null : tc.bit, cb = $("chgBit");
+    cb.hidden = !bit;
+    if (bit) {
+      $("chgBitText").textContent = bit.text;
+      var used = bit.limit ? bit.used / bit.limit : 0, then = bit.limit ? (bit.used + (bit.job_adds || 0)) / bit.limit : 0;
+      $("chgBitUsed").style.width = bit.limit ? Math.max(2, Math.min(100, 100 * used)) + "%" : "0";
+      $("chgBitUsed").style.background = lifeColor(used);
+      $("chgBitThen").style.width = bit.limit && used < 1 ? Math.min(100, 100 * then) + "%" : "0";
+      $("chgBitThen").style.background = lifeColor(then);
+      $("chgBitThen").style.opacity = ".45";
+    }
+    $("chgPress").textContent = probe
+      ? "Put the probe in, plug its cable into the port on the side of the head, then press the front button once."
+      : bit ? "Put bit " + bit.label + " in, then press the front button once."
+      : "Put this bit in, then press the front button once.";
+    var after = tc.then;
+    if (after) {
+      $("chgAfter").textContent = "After this: " + codeText(after) + (after.label ? " " + after.label : "") +
+        (after.in !== undefined ? " in about " + dur(after.in) : "");
+    } else if (v.job && v.job.known) {
+      $("chgAfter").textContent = "Last bit of the job";
+    } else {
+      $("chgAfter").textContent = "";
+    }
+    show("change");
+  }
+
+  function renderAlarm(v) {
+    var why = v.alarm || "Machine stopped";
+    $("alarmWhy").textContent = why;
+    var help = "Check the machine, then unlock it in Makera Studio.";
+    if (/probe/i.test(why)) help = "Check that the probe is in the spindle and its cable is plugged into the side of the head. Then unlock the machine in Makera Studio and start the job again.";
+    else if (/by hand/i.test(why)) help = "The job was stopped from the front button or from Makera Studio. Unlock the machine in Makera Studio to carry on.";
+    $("alarmHelp").textContent = help;
+    show("alarm");
+  }
+
+  function renderIdle(v) {
+    $("idleTitle").textContent = "Ready";
+    $("idleMachine").textContent = v.machine && v.machine.name ? v.machine.name : "";
+    var lj = v.last_job;
+    if (lj) {
+      $("last").hidden = false;
+      $("lastLabel").textContent = lj.done ? "Last job finished" : "Last job stopped";
+      $("lastName").textContent = lj.name || "Job";
+      setPart($("lastPic"), lj.preview);
+      var ended = new Date(lj.ended * 1000);
+      var at = "";
+      try { at = ended.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }); } catch (e) { at = ""; }
+      $("lastMeta").textContent = (lj.done ? "Took " + dur(lj.elapsed) : (lj.reason || "Stopped")) + (at ? " · ended at " + at : "");
+    } else {
+      $("last").hidden = true;
+    }
+    var hint = $("idleHint");
+    hint.textContent = "";
+    if (v.relay && v.relay.name) {
+      hint.appendChild(document.createTextNode("Start jobs from Makera Studio connected to "));
+      hint.appendChild(el("b", "", v.relay.name));
+      hint.appendChild(document.createTextNode(". This screen then follows the job."));
+    }
+    var more = $("idleSettings");
+    more.textContent = "";
+    if (v.settings_url) {
+      more.appendChild(document.createTextNode("Bit colors and a practice run: "));
+      more.appendChild(el("b", "", shortUrl(v.settings_url)));
+    }
+    show("idle");
+  }
+
+  function renderDemoTag(v) {
+    var d = v && v.demo;
+    document.body.classList.toggle("is-demo", !!d);
+    $("demoTag").hidden = !d;
+    if (!d) return;
+    var check = d.kind === "check";
+    $("demoKind").textContent = check ? "Color check" : "Demo";
+    $("demoText").textContent = check ? "Not a real job" : "Practice run, not the Z1";
+    $("demoEnds").textContent = d.ends_in !== undefined && d.ends_in !== null ? "Ends in " + dur(d.ends_in) : "";
+  }
+
+  function renderMsg(title, text) {
+    $("msgTitle").textContent = title;
+    $("msgText").textContent = text;
+    show("msg");
+  }
+
+  function render(v) {
+    last = v;
+    lastAt = Date.now();
+    $("banner").hidden = true;
+    renderDemoTag(v);
+    if (!v || !v.mode) { renderMsg("Starting", "Getting ready."); return; }
+    switch (v.mode) {
+      case "toolchange": renderChange(v); break;
+      case "alarm": renderAlarm(v); break;
+      case "running":
+      case "paused": if (v.job) { renderRun(v); } else { renderIdle(v); } break;
+      case "idle": renderIdle(v); break;
+      case "direct":
+        renderMsg("Makera Studio is connected straight to the Z1",
+          "This screen can't see the job while it is. In Makera Studio, connect to " +
+          ((v.relay && v.relay.name) || "the machine name ending in _screen") +
+          " instead, or disconnect Makera Studio after starting the job and this screen picks the job up.");
+        break;
+      case "connecting":
+        renderMsg("Connecting to the Z1", "Found " + ((v.machine && v.machine.name) || "the machine") + ". Waiting for it to answer.");
+        break;
+      default:
+        renderMsg("Looking for the Z1", "Make sure the Z1 is on and on the same Wi-Fi as this screen.");
+    }
+  }
+  window.Z1Screen = { render: render };
+
+  // keep the display awake where the browser allows it
+  function wake() {
+    try { if (navigator.wakeLock) navigator.wakeLock.request("screen").catch(function () {}); } catch (e) {}
+  }
+  document.addEventListener("visibilitychange", function () { if (!document.hidden) wake(); });
+  wake();
+
+  if (window.Z1_DEMO) return;
+
+  function poll() {
+    fetch("state", { cache: "no-store" }).then(function (r) { return r.json(); }).then(render)
+      .catch(function () {}).then(function () { setTimeout(poll, 1000); });
+  }
+  if (window.EventSource) {
+    var es = new EventSource("events");
+    es.onmessage = function (e) { try { render(JSON.parse(e.data)); } catch (err) {} };
+  } else {
+    poll();
+  }
+  setInterval(function () {
+    if (Date.now() - lastAt > 6000) $("banner").hidden = false;
+  }, 2000);
+})();
+</script>
+<!-- page:end -->
+</body>
+</html>

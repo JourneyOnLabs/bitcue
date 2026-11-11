@@ -1,0 +1,1126 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>BitCue</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&display=swap">
+<style>
+
+/* Layout: a machine-side panel read from across the shop. The next bit owns the
+   left two thirds in its sticker color, the clock times stack on the right, and
+   the whole job runs along the bottom as a bar split into the bits' colors.
+   At a tool change the entire screen turns the color of the bit to load. */
+:root {
+  --ground: #141311;
+  --panel: #1e1c19;
+  --line: #36322c;
+  --ink: #f4f0e8;
+  --muted: #aaa397;
+  --dim: #6e685e;
+  --stop: #ff5b4f;
+  --display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", "Helvetica Neue", Arial, sans-serif;
+  --body: "Barlow", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --gutter: clamp(16px, 3vw, 48px);
+  --gap: clamp(12px, 2.2vh, 28px);
+  --label: clamp(12px, 1.9vh, 22px);
+  --radius: clamp(8px, 1.4vh, 16px);
+  color-scheme: dark;
+}
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: clamp(15px, 2.2vh, 24px);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+.num { font-variant-numeric: tabular-nums; }
+.label {
+  font-family: var(--body);
+  font-weight: 600;
+  font-size: var(--label);
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.view { box-sizing: border-box; height: 100%; padding-block: clamp(14px, 3vh, 40px); padding-inline: var(--gutter); }
+
+/* ---------- running ---------- */
+#run { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: var(--gap); }
+.top { display: flex; align-items: center; gap: 16px; min-width: 0; }
+.job { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.job-name {
+  font-family: var(--display); font-weight: 600; font-size: clamp(20px, 3.6vh, 44px);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: .01em;
+}
+.pill {
+  flex: none; display: inline-flex; align-items: center; gap: .5em;
+  font-weight: 600; font-size: var(--label); letter-spacing: .08em; text-transform: uppercase;
+  padding: .55em 1em; border-radius: 999px; border: 1px solid var(--line); color: var(--ink); background: var(--panel);
+}
+.pill i { width: .7em; height: .7em; border-radius: 50%; background: #58c26b; display: block; }
+.pill[data-s="paused"] i { background: #e8b23a; }
+.pill[data-s="alarm"] i { background: var(--stop); }
+
+.main { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr); gap: var(--gap); min-height: 0; }
+.cards { display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: var(--gap); min-height: 0; }
+.cut, .strip { --c: #555; --t: #fff; background: var(--c); color: var(--t); border-radius: var(--radius); min-width: 0; }
+.cut {
+  padding: clamp(16px, 3vh, 40px) clamp(18px, 2.4vw, 44px);
+  display: grid; grid-template-rows: auto 1fr auto; gap: clamp(6px, 1.2vh, 16px);
+  min-height: 0; overflow: hidden;
+}
+.cut .label, .strip .label { color: inherit; opacity: .78; }
+.cut-head { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+.cut-bit { display: flex; align-items: center; gap: clamp(14px, 2vw, 36px); min-width: 0; }
+.code {
+  font-family: var(--display); font-weight: 700; line-height: .86;
+  font-size: clamp(72px, 19vh, 260px); letter-spacing: -.01em;
+}
+.bit-text { min-width: 0; display: flex; flex-direction: column; gap: .3em; }
+.bit-name { font-weight: 600; font-size: clamp(20px, 4.2vh, 56px); line-height: 1.05; text-wrap: balance; overflow-wrap: anywhere; }
+.sticker { font-weight: 500; font-size: clamp(14px, 2.6vh, 32px); opacity: .85; }
+.cut-gauge { font-size: clamp(16px, 3vh, 36px); height: .55em; border-radius: .3em; box-shadow: 0 0 0 3px #1d1b18; }
+.strip { display: flex; align-items: center; gap: .7em; padding: clamp(10px, 1.8vh, 22px) clamp(18px, 2.4vw, 44px); font-size: clamp(16px, 2.8vh, 34px); }
+.strip-code { font-family: var(--display); font-weight: 700; font-size: 1.6em; line-height: 1; }
+.strip-name { flex: 1; min-width: 0; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.strip-in { display: flex; align-items: baseline; gap: .5em; white-space: nowrap; }
+.strip-in .num:first-child { font-family: var(--display); font-weight: 700; font-size: 1.6em; line-height: 1; }
+.strip-in .at { font-weight: 500; opacity: .85; }
+.cut.none, .strip.none { background: var(--panel); color: var(--ink); border: 1px solid var(--line); }
+
+.times { display: grid; grid-template-rows: repeat(3, minmax(0, 1fr)); gap: var(--gap); min-height: 0; }
+.time {
+  background: var(--panel); border-radius: var(--radius);
+  padding: clamp(10px, 2vh, 26px) clamp(14px, 1.8vw, 30px);
+  display: flex; flex-direction: column; justify-content: center; gap: .25em; min-width: 0;
+}
+.time .v { font-family: var(--display); font-weight: 600; font-size: clamp(30px, 7vh, 96px); line-height: 1; white-space: nowrap; }
+.time .s { color: var(--muted); font-size: clamp(13px, 2vh, 24px); }
+
+.bottom { display: flex; flex-direction: column; gap: clamp(8px, 1.4vh, 16px); }
+.bar-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.now { display: block; min-width: 0; color: var(--ink); font-weight: 500; }
+.now b { font-weight: 700; }
+.now .dot { margin-right: .5em; vertical-align: -.05em; }
+.dot { display: inline-block; width: .9em; height: .9em; border-radius: 3px; background: var(--c, #777); flex: none; box-shadow: inset 0 0 0 1px rgba(0,0,0,.25); }
+.pct { font-family: var(--display); font-weight: 600; font-size: clamp(20px, 3.4vh, 42px); }
+.bar { position: relative; height: clamp(22px, 5vh, 56px); border-radius: 6px; background: var(--line); }
+.bar .layer { position: absolute; inset: 0; border-radius: 6px; overflow: hidden; }
+.bar .rest { opacity: .32; }
+.seg { position: absolute; top: 0; bottom: 0; background: var(--c); box-shadow: inset -3px 0 0 var(--ground);
+  display: flex; align-items: center; padding-left: .5em; box-sizing: border-box; overflow: hidden;
+  font-family: var(--display); font-weight: 700; font-size: clamp(13px, 2.6vh, 30px); color: var(--t); }
+.bar .rest .seg { color: transparent; }
+.marker { position: absolute; top: -8px; bottom: -8px; width: 4px; margin-left: -2px; border-radius: 2px; background: var(--ink); box-shadow: 0 0 0 3px var(--ground); }
+.plain { position: absolute; inset: 0; border-radius: 6px; overflow: hidden; }
+.plain i { display: block; height: 100%; background: var(--muted); }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; color: var(--muted); font-size: clamp(13px, 2vh, 22px); }
+.chip { display: inline-flex; align-items: center; gap: .45em; max-width: 100%; }
+.chip > span:last-child { min-width: 0; overflow-wrap: anywhere; }
+.chip.done { opacity: .45; }
+.chip.cur { color: var(--ink); font-weight: 600; }
+.chip.nx { color: var(--ink); font-weight: 600; text-decoration: underline; text-underline-offset: .25em; text-decoration-thickness: 2px; }
+
+/* a bit with no sticker color set: striped gray, so it can't pass for a sticker color */
+.unset { background-image: repeating-linear-gradient(135deg, rgba(255,255,255,.10) 0 .35em, rgba(0,0,0,.12) .35em .7em); }
+.cut.unset, .strip.unset, #change.unset { background-image: repeating-linear-gradient(135deg, rgba(255,255,255,.07) 0 26px, rgba(0,0,0,.10) 26px 52px); }
+
+/* demo and color check: a strip across the top of every screen */
+.demo-tag {
+  position: fixed; left: 0; right: 0; top: 0; z-index: 7; box-sizing: border-box;
+  min-height: calc(var(--label) * 2.6 + env(safe-area-inset-top, 0px));
+  padding: env(safe-area-inset-top, 0px) var(--gutter) 0;
+  display: flex; align-items: center; justify-content: center; gap: .4em 1em; flex-wrap: wrap;
+  background: #000; color: #fff; font-weight: 600; font-size: var(--label); letter-spacing: .06em; text-transform: uppercase;
+}
+.demo-tag b { background: #ffd600; color: #000; padding: .2em .6em; border-radius: 4px; letter-spacing: .14em; }
+.demo-tag span:last-child { color: #c9c3b8; }
+body.is-demo .view { padding-top: calc(clamp(14px, 3vh, 40px) + var(--label) * 2.6 + env(safe-area-inset-top, 0px)); }
+
+/* ---------- tool change ---------- */
+#change { --c: #555; --t: #fff; background: var(--c); color: var(--t); display: grid; grid-template-rows: auto 1fr auto; gap: var(--gap); }
+#change .label { color: inherit; opacity: .8; }
+.chg-top { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.chg-main { display: flex; flex-direction: column; justify-content: center; gap: clamp(6px, 1.4vh, 18px); min-height: 0; }
+.load { font-family: var(--display); font-weight: 700; font-size: clamp(28px, 7vh, 90px); letter-spacing: .06em; text-transform: uppercase; line-height: 1; }
+.load-row { display: flex; align-items: center; justify-content: space-between; gap: 12px 24px; flex-wrap: wrap; }
+/* the bit coming out: a box in the color of the container it goes back into */
+.out { --oc: #555; --ot: #fff; background-color: var(--oc); color: var(--ot); box-shadow: 0 0 0 3px var(--t);
+  font-weight: 700; font-size: clamp(16px, 3.6vh, 46px); letter-spacing: .05em; text-transform: uppercase;
+  line-height: 1.1; padding: .3em .75em; border-radius: var(--radius); overflow-wrap: anywhere; }
+.big-code { font-family: var(--display); font-weight: 700; font-size: clamp(110px, 34vh, 470px); line-height: .82; letter-spacing: -.015em; }
+.big-name { font-weight: 600; font-size: clamp(26px, 6.4vh, 86px); line-height: 1.05; text-wrap: balance; overflow-wrap: anywhere; }
+.big-sticker { font-weight: 500; font-size: clamp(18px, 3.6vh, 46px); opacity: .9; }
+.big-bit { align-self: stretch; max-width: 40em; display: flex; flex-direction: column; gap: .35em; padding: .45em .7em .55em; border-radius: .5em; background: #1d1b18; color: #fff; font-weight: 700; font-size: clamp(16px, 3vh, 36px); }
+.big-bit[hidden] { display: none; }
+.gauge { position: relative; height: .42em; border-radius: .21em; background: #4a4640; overflow: hidden; }
+.gauge i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: inherit; }
+.bit-warn { margin: 0 0 12px; padding: 10px 14px; border-radius: 10px; background: #e8b23a; color: #151412; font-weight: 600; }
+.chg-foot { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px 32px; flex-wrap: wrap; border-top: 3px solid currentColor; padding-top: clamp(10px, 2vh, 24px); }
+.press { font-weight: 700; font-size: clamp(20px, 4.4vh, 58px); line-height: 1.1; max-width: 32ch; text-wrap: balance; }
+.after { font-size: clamp(14px, 2.6vh, 32px); font-weight: 500; opacity: .9; text-align: right; overflow-wrap: anywhere; }
+@media (prefers-reduced-motion: no-preference) {
+  .load { animation: blink 1.6s ease-in-out infinite; }
+  @keyframes blink { 50% { opacity: .45; } }
+}
+
+/* ---------- stopped ---------- */
+#alarm { box-shadow: inset 0 0 0 clamp(10px, 2vh, 22px) var(--stop); display: flex; flex-direction: column; justify-content: center; gap: clamp(10px, 2.4vh, 30px); padding-inline: calc(var(--gutter) + 2vh); }
+.alarm-title { font-family: var(--display); font-weight: 700; font-size: clamp(54px, 15vh, 200px); line-height: .9; color: var(--stop); }
+.alarm-why { font-weight: 600; font-size: clamp(22px, 5.4vh, 72px); line-height: 1.1; max-width: 26ch; text-wrap: balance; }
+.alarm-help { color: var(--muted); font-size: clamp(16px, 3vh, 36px); max-width: 44ch; }
+
+/* ---------- ready / messages ---------- */
+#idle, #msg { display: flex; flex-direction: column; justify-content: center; gap: clamp(10px, 2.2vh, 28px); }
+.idle-title { font-family: var(--display); font-weight: 700; font-size: clamp(64px, 18vh, 240px); line-height: .9; }
+.idle-machine { font-weight: 600; font-size: clamp(18px, 3.6vh, 44px); color: var(--muted); }
+.last { display: flex; align-items: center; gap: clamp(12px, 2vw, 28px); padding: clamp(12px, 2.4vh, 30px) clamp(16px, 2vw, 34px); background: var(--panel); border-radius: var(--radius); max-width: 60rem; }
+.last-text { display: flex; flex-direction: column; gap: .5em; min-width: 0; }
+/* the picture of the job's part (drawn by the Pi from the job file) */
+.part { flex: none; width: clamp(56px, 11vh, 140px); height: clamp(56px, 11vh, 140px); object-fit: contain; border-radius: 10px; background: rgba(0, 0, 0, .25); }
+.last-name { font-weight: 600; font-size: clamp(18px, 3.4vh, 42px); overflow-wrap: anywhere; }
+.last-meta { color: var(--muted); font-size: clamp(14px, 2.4vh, 30px); }
+.hint { color: var(--muted); font-size: clamp(14px, 2.4vh, 30px); max-width: 56ch; margin: 0; }
+.hint b { color: var(--ink); font-weight: 600; }
+.msg-title { font-family: var(--display); font-weight: 700; font-size: clamp(44px, 11vh, 150px); line-height: .95; text-wrap: balance; }
+
+.banner { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); transform: translateX(-50%);
+  background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 999px; padding: .5em 1.1em; font-size: var(--label); font-weight: 600; z-index: 5; }
+
+/* narrow screens and phones: stack, allow scrolling */
+@media (max-width: 760px), (max-aspect-ratio: 4/5) {
+  body { overflow: auto; }
+  .view { height: auto; min-height: 100%; }
+  #run { grid-template-rows: auto auto auto; }
+  .main { grid-template-columns: minmax(0, 1fr); }
+  .times { grid-template-rows: none; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .time .v { font-size: clamp(24px, 7vw, 44px); }
+  .code { font-size: clamp(76px, 24vw, 150px); }
+  .bit-name { font-size: clamp(20px, 6vw, 34px); }
+  .strip { flex-wrap: wrap; }
+  .strip-name { flex-basis: 100%; order: 3; white-space: normal; }
+  .strip-in { order: 4; }
+  .big-code { font-size: clamp(110px, 38vw, 260px); }
+  .big-name { font-size: clamp(24px, 8vw, 48px); }
+  .idle-title { font-size: clamp(56px, 26vw, 150px); }
+  .msg-title { font-size: clamp(36px, 11vw, 72px); }
+  .alarm-title { font-size: clamp(44px, 14vw, 96px); }
+  .press { font-size: clamp(20px, 6vw, 34px); }
+  .after { text-align: left; }
+  .job-name { white-space: normal; overflow-wrap: anywhere; }
+}
+@media (max-width: 420px) {
+  .times { grid-template-columns: minmax(0, 1fr); }
+  .cut-bit { flex-direction: column; align-items: flex-start; }
+}
+
+/* ---------- demo control bar (demo page only) ---------- */
+:root { --dock: #0b0a09; --wait: #f4f0e8; }
+body.has-demo .view { height: calc(100% - var(--dock-h, 150px)); }
+.dock {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 8; box-sizing: border-box;
+  background: var(--dock); border-top: 1px solid var(--line); color: var(--ink); font-family: var(--body);
+  padding: 12px var(--gutter) calc(12px + env(safe-area-inset-bottom, 0px));
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 24px; align-items: center;
+  grid-template-areas: "label front" "say front" "controls front";
+}
+.dock-label { grid-area: label; font-weight: 600; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.dock-say { grid-area: say; margin: 0; font-size: 17px; line-height: 1.35; max-width: 72ch; min-height: 2.7em; text-wrap: pretty; }
+.dock-controls { grid-area: controls; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; min-width: 0; }
+.dbtn {
+  display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box;
+  font: 600 14px/1 var(--body); color: var(--ink); background: var(--panel); border: 1px solid var(--line);
+  border-radius: 999px; padding: 0 1.05em; height: 38px; cursor: pointer; white-space: nowrap;
+}
+.dbtn:hover:not(:disabled) { border-color: var(--muted); }
+.dbtn:disabled { opacity: .4; cursor: default; }
+.dbtn.primary { background: var(--ink); color: var(--ground); border-color: var(--ink); }
+.dbtn:focus-visible, .front:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+.dbtn .short { display: none; }
+.dseg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.dseg .dbtn { border: 0; border-radius: 0; height: 36px; }
+.dseg .dbtn + .dbtn { border-left: 1px solid var(--line); }
+.dseg .dbtn[aria-pressed="true"] { background: var(--ink); color: var(--ground); }
+.whatif { position: relative; }
+.whatif summary { list-style: none; }
+.whatif summary::-webkit-details-marker { display: none; }
+.whatif-menu {
+  position: absolute; bottom: calc(100% + 8px); left: 0; z-index: 9; display: flex; flex-direction: column; gap: 4px;
+  padding: 8px; width: 20rem; background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+  box-shadow: 0 14px 34px rgba(0,0,0,.5);
+}
+.whatif-menu .dbtn { justify-content: flex-start; text-align: left; border: 0; background: transparent; white-space: normal; height: auto; min-height: 40px; padding: .6em .9em; line-height: 1.25; }
+.whatif-menu .dbtn:hover { background: var(--line); }
+.front {
+  grid-area: front; display: flex; flex-direction: column; align-items: center; gap: 7px; padding: 4px 2px;
+  background: none; border: 0; color: var(--ink); cursor: pointer;
+  font: 600 12px/1 var(--body); letter-spacing: .09em; text-transform: uppercase;
+}
+.front .ring {
+  width: 66px; height: 66px; border-radius: 50%; display: grid; place-items: center; box-sizing: border-box;
+  border: 3px solid #cfc8bb; background: #2a2824; box-shadow: inset 0 -5px 0 rgba(0,0,0,.35);
+}
+.front .ring i { width: 28px; height: 28px; border-radius: 50%; background: #3b3832; box-shadow: inset 0 0 0 2px rgba(255,255,255,.08); }
+.front.waiting .ring { border-color: var(--wait); box-shadow: 0 0 0 4px rgba(255,255,255,.06), 0 0 24px var(--wait); }
+.front.waiting .ring i { background: var(--wait); }
+.front:disabled { opacity: .45; cursor: default; }
+@media (prefers-reduced-motion: no-preference) {
+  .front.waiting .ring { animation: frontglow 1.1s ease-in-out infinite; }
+  @keyframes frontglow { 50% { box-shadow: 0 0 0 8px rgba(255,255,255,.03), 0 0 6px var(--wait); } }
+}
+@media (max-width: 760px), (max-aspect-ratio: 4/5) {
+  body.has-demo { padding-bottom: var(--dock-h, 220px); }
+  body.has-demo .view { height: auto; }
+  .dock { grid-template-columns: auto minmax(0, 1fr); gap: 8px 14px; grid-template-areas: "label label" "say say" "front controls"; }
+  .dock-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dock-say { font-size: 15px; min-height: 4.05em; }
+  .dock-controls { gap: 6px; }
+  .dbtn { height: 36px; padding: 0 .85em; font-size: 13px; }
+  .dbtn .long { display: none; }
+  .dbtn .short { display: inline; }
+  .front { gap: 5px; font-size: 11px; }
+  .front .ring { width: 58px; height: 58px; }
+  .whatif-menu { position: fixed; left: 16px; right: 16px; width: auto; bottom: calc(var(--dock-h, 220px) + 8px); }
+}
+
+/* ---------- the Pi's 2.8-inch screen (demo page only) ---------- */
+.tft-stage {
+  position: fixed; left: 0; right: 0; top: 0; bottom: var(--dock-h, 150px); z-index: 6; box-sizing: border-box;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+  padding: calc(16px + env(safe-area-inset-top, 0px)) 16px 16px; background: var(--ground);
+}
+body:not(.tft-mode) .tft-stage { display: none; }
+body.tft-mode .view, body.tft-mode .demo-tag, body.tft-mode .banner { display: none !important; }
+.tft-bezel { background: #050505; border-radius: 16px; padding: var(--bz, 18px); box-shadow: 0 0 0 1px #2c2a26, 0 18px 50px rgba(0,0,0,.55); }
+.tft-bezel canvas { display: block; border-radius: 2px; background: #000; }
+.tft-note { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.4; text-align: center; max-width: 60ch; }
+</style>
+<section id="run" class="view" hidden>
+  <div class="top">
+    <img class="part" id="jobPic" alt="" hidden>
+    <div class="job">
+      <span class="label">Job</span>
+      <span class="job-name" id="jobName">-</span>
+    </div>
+    <span class="pill" id="pill" data-s="run"><i></i><span id="pillText">Running</span></span>
+  </div>
+  <p class="bit-warn" id="jobBitWarn" hidden></p>
+  <div class="main">
+    <div class="cards">
+      <div class="cut" id="cut">
+        <div class="cut-head">
+          <span class="label" id="cutHead">Cutting now</span>
+          <span class="label" id="cutBitLabel"></span>
+        </div>
+        <div class="cut-bit">
+          <span class="code" id="cutCode">-</span>
+          <span class="bit-text">
+            <span class="bit-name" id="cutName"></span>
+            <span class="sticker" id="cutSub"></span>
+          </span>
+        </div>
+        <span class="gauge cut-gauge" id="cutGauge" hidden><i id="cutThen"></i><i id="cutUsed"></i></span>
+      </div>
+      <div class="strip" id="next">
+        <span class="label" id="nextWord">Next</span>
+        <span class="strip-code" id="nextCode"></span>
+        <span class="strip-name" id="nextName"></span>
+        <span class="strip-in"><span class="num" id="nextIn"></span><span class="at num" id="nextAt"></span></span>
+      </div>
+    </div>
+    <div class="times">
+      <div class="time"><span class="label">Elapsed</span><span class="v num" id="elapsed">-</span><span class="s" id="elapsedSub">machine time</span></div>
+      <div class="time"><span class="label">Time left</span><span class="v num" id="left">-</span><span class="s num" id="leftSub"></span></div>
+      <div class="time"><span class="label">Tool changes left</span><span class="v num" id="changesLeft">-</span><span class="s num" id="changesSub"></span></div>
+    </div>
+  </div>
+  <div class="bottom">
+    <div class="bar-head">
+      <span class="now" id="nextCount"></span>
+      <span class="pct num" id="pct">0%</span>
+    </div>
+    <div class="bar" id="bar" role="img" aria-label="Job progress"></div>
+    <div class="legend" id="legend"></div>
+  </div>
+</section>
+
+<section id="change" class="view" hidden aria-live="assertive">
+  <div class="chg-top">
+    <span class="label num" id="chgCount">Tool change</span>
+    <span class="label" id="chgJob"></span>
+  </div>
+  <div class="chg-main">
+    <div class="load-row">
+      <span class="load" id="chgLoad">Load</span>
+      <span class="out" id="chgOut" hidden></span>
+    </div>
+    <span class="big-code" id="chgCode">-</span>
+    <span class="big-name" id="chgName"></span>
+    <span class="big-sticker" id="chgSticker"></span>
+    <span class="big-bit" id="chgBit" hidden><span id="chgBitText"></span><span class="gauge"><i id="chgBitThen"></i><i id="chgBitUsed"></i></span></span>
+  </div>
+  <div class="chg-foot">
+    <span class="press" id="chgPress">Then press the front button once.</span>
+    <span class="after num" id="chgAfter"></span>
+  </div>
+</section>
+
+<section id="alarm" class="view" hidden aria-live="assertive">
+  <span class="label">BitCue</span>
+  <span class="alarm-title">Machine stopped</span>
+  <span class="alarm-why" id="alarmWhy"></span>
+  <span class="alarm-help" id="alarmHelp"></span>
+</section>
+
+<section id="idle" class="view" hidden>
+  <span class="label">BitCue</span>
+  <span class="idle-title" id="idleTitle">Ready</span>
+  <span class="idle-machine" id="idleMachine"></span>
+  <div class="last" id="last" hidden>
+    <img class="part" id="lastPic" alt="" hidden>
+    <div class="last-text">
+      <span class="label" id="lastLabel">Last job</span>
+      <span class="last-name" id="lastName"></span>
+      <span class="last-meta num" id="lastMeta"></span>
+    </div>
+  </div>
+  <p class="hint" id="idleHint"></p>
+  <p class="hint" id="idleSettings"></p>
+</section>
+
+<section id="msg" class="view">
+  <span class="label">BitCue</span>
+  <span class="msg-title" id="msgTitle">Starting</span>
+  <p class="hint" id="msgText">Getting ready.</p>
+</section>
+
+<div class="banner" id="banner" hidden>Lost contact with the screen service. Retrying.</div>
+<div class="demo-tag" id="demoTag" hidden><b id="demoKind">Demo</b><span id="demoText">Practice run, not the Z1</span><span id="demoEnds"></span></div>
+<div class="tft-stage" id="tftStage">
+  <div class="tft-bezel" id="tftBezel"><canvas id="tftCanvas" width="320" height="240" role="img" aria-label="The Pi's 2.8-inch screen"></canvas></div>
+  <p class="tft-note">The Pi's 2.8-inch screen (320 &times; 240), shown enlarged. It is drawn from the same layout steps the Pi uses.</p>
+</div>
+<div class="dock" id="dock" role="region" aria-label="Demo controls">
+  <span class="dock-label" id="dockLabel">Demo</span>
+  <p class="dock-say" id="say" aria-live="polite"></p>
+  <div class="dock-controls">
+    <button class="dbtn primary" id="act" type="button">Press Run</button>
+    <button class="dbtn" id="skip" type="button"><span class="long">Skip to the next stop</span><span class="short">Skip ahead</span></button>
+    <div class="dseg" role="group" aria-label="Demo speed">
+      <button class="dbtn" type="button" data-speed="1" aria-pressed="false"><span class="long">Real speed</span><span class="short">1&times;</span></button>
+      <button class="dbtn" type="button" data-speed="60" aria-pressed="true">60&times;</button>
+      <button class="dbtn" type="button" data-speed="360" aria-pressed="false">360&times;</button>
+    </div>
+    <div class="dseg" role="group" aria-label="What to show">
+      <button class="dbtn" type="button" data-show="tft" aria-pressed="true"><span class="long">Pi's screen</span><span class="short">Pi</span></button>
+      <button class="dbtn" type="button" data-show="page" aria-pressed="false"><span class="long">Phone page</span><span class="short">Phone</span></button>
+    </div>
+    <details class="whatif" id="whatif">
+      <summary class="dbtn">What if&hellip;</summary>
+      <div class="whatif-menu">
+        <button class="dbtn" type="button" data-what="probe">the probe cable isn't plugged in</button>
+        <button class="dbtn" type="button" data-what="hand">the front button is pressed while it cuts</button>
+        <button class="dbtn" type="button" data-what="laptop">the laptop is closed during the job</button>
+      </div>
+    </details>
+    <button class="dbtn" id="restart" type="button">Start over</button>
+  </div>
+  <button class="front" id="front" type="button" aria-label="The Z1's front button"><span class="ring"><i></i></span>Front button</button>
+</div>
+<script>
+window.Z1_DEMO = true;
+window.Z1_TIMELINE = {"shared":[{"name":"Makera_Z1"},{"name":"Makera_Z1_screen"},{"o":"r","x":0,"y":0,"w":320,"h":240,"c":"#141311"},{"o":"t","x":10,"y":15,"t":"BITCUE","f":"b6","z":11,"c":"#AAA397","a":"l","ls":1,"mw":43.0},{"o":"t","x":310,"y":15,"t":"Makera_Z1","f":"b5","z":11,"c":"#AAA397","a":"r","mw":52.0},{"o":"t","x":8,"y":114,"t":"Ready","f":"d7","z":72,"c":"#F4F0E8","a":"l","mw":160.0},{"o":"t","x":10,"y":148,"t":"In Makera Studio, connect to","f":"b5","z":11,"c":"#AAA397","a":"l","mw":138.0},{"o":"t","x":10,"y":165,"t":"Makera_Z1_screen","f":"b6","z":13,"c":"#F4F0E8","a":"l","mw":108.0},{"o":"t","x":10,"y":188,"t":"Bit colors and a practice run","f":"b5","z":11,"c":"#AAA397","a":"l","mw":136.0},{"o":"t","x":10,"y":205,"t":"z1screen.local:8080/settings","f":"b6","z":13,"c":"#F4F0E8","a":"l","mw":167.0},[{"tool":1,"code":"T1","label":"3.175 × 12 mm flat end mill","color":"#D32F2F","text":"#FFFFFF","sticker":"Red","unset":false},{"tool":2,"code":"T2","label":"2 × 8 mm ball end mill","color":"#FFD600","text":"#111111","sticker":"Yellow","unset":false},{"tool":3,"code":"T3","label":"60° V-bit, 0.1 mm tip","color":"#1565C0","text":"#FFFFFF","sticker":"Blue","unset":false}],[{"tool":1,"code":"T1","start":0.0,"end":0.2958,"color":"#D32F2F","unset":false},{"tool":2,"code":"T2","start":0.2958,"end":0.7753,"color":"#FFD600","unset":false},{"tool":3,"code":"T3","start":0.7753,"end":0.8739,"color":"#1565C0","unset":false},{"tool":1,"code":"T1","start":0.8739,"end":1.0,"color":"#D32F2F","unset":false}],{"tool":1,"code":"T1","label":"3.175 × 12 mm flat end mill","color":"#D32F2F","text":"#FFFFFF","sticker":"Red","unset":false,"bit":{"label":"B","used":3960.0000000000005,"limit":10800.0,"choices":2,"job_adds":102.0,"state":"ok","text":"Bit B · 1 h 06 of 3 h used","used_text":"1 h 06"}},{"o":"r","x":0,"y":0,"w":320,"h":240,"c":"#F5F5F5"},{"o":"t","x":10,"y":15,"t":"TOOL CHANGE","f":"b6","z":11,"c":"#3F3F3F","a":"l","ls":1,"mw":81.0},{"o":"t","x":310,"y":15,"t":"sample-sign","f":"b5","z":11,"c":"#3F3F3F","a":"r","mw":60.0},{"o":"t","x":10,"y":176,"t":"Put the probe in, plug its cable into","f":"b7","z":15,"c":"#111111","a":"l","mw":231.0},{"o":"t","x":10,"y":195,"t":"the port on the side of the head,","f":"b7","z":15,"c":"#111111","a":"l","mw":211.0},{"o":"t","x":10,"y":214,"t":"then press the front button once.","f":"b7","z":15,"c":"#111111","a":"l","mw":221.0},{"o":"t","x":10,"y":231,"t":"After this: T1 3.175 × 12 mm flat end mill in about 1 min","f":"b5","z":12,"c":"#3F3F3F","a":"l","mw":269.0},{"o":"r","x":10,"y":152,"w":300,"h":2,"c":"#111111"},{"o":"t","x":10,"y":47,"t":"LOAD THE PROBE","f":"d7","z":24,"c":"#111111","a":"l","ls":2,"mw":170.0,"bl":"#8E8E8E"},{"o":"r","x":194,"y":25,"w":118,"h":26,"c":"#111111","r":7},{"o":"r","x":196,"y":27,"w":114,"h":22,"c":"#D32F2F","r":5},{"o":"t","x":204,"y":42.68,"t":"T1 BACK IN RED","f":"b7","z":13,"c":"#FFFFFF","a":"l","ls":0.5,"mw":98.5},{"o":"t","x":10,"y":141,"t":"Probe","f":"d7","z":88,"c":"#111111","a":"l","mw":187.0},{"o":"t","x":210.0,"y":141,"t":"Wired probe","f":"b6","z":18,"c":"#111111","a":"l","mw":100.0},{"tool":0,"code":"Probe","label":"Probe","color":"#F5F5F5","text":"#111111","sticker":"White","unset":false},{"o":"c","x":14,"y":11,"r":4,"c":"#58C26B"},{"o":"t","x":23,"y":15,"t":"RUNNING","f":"b6","z":11,"c":"#F4F0E8","a":"l","ls":1,"mw":52.0},{"o":"t","x":310,"y":15,"t":"sample-sign","f":"b5","z":11,"c":"#AAA397","a":"r","mw":60.0},{"o":"r","x":6,"y":24,"w":308,"h":104,"c":"#F5F5F5","r":8},{"o":"t","x":16,"y":41,"t":"PROBING","f":"b6","z":10,"c":"#434343","a":"l","ls":1,"mw":47.0},{"o":"t","x":18,"y":102,"t":"Probe","f":"d7","z":58,"c":"#111111","a":"l","mw":124.0},{"o":"t","x":153.0,"y":102,"t":"Wired probe","f":"b6","z":15,"c":"#111111","a":"l","mw":81.0},{"o":"r","x":6,"y":134,"w":308,"h":34,"c":"#D32F2F","r":7},{"o":"t","x":16,"y":154.24,"t":"NEXT","f":"b6","z":9,"c":"#F5D1D1","a":"l","ls":1,"mw":26.0},{"o":"t","x":304,"y":157.5,"t":"in 1 min","f":"d7","z":18,"c":"#FFFFFF","a":"r","mw":50.0},{"o":"t","x":49.0,"y":157.5,"t":"T1","f":"d7","z":18,"c":"#FFFFFF","a":"l","mw":14.0},{"o":"t","x":72.0,"y":155.32,"t":"3.175 × 12 mm flat end mill · bit B","f":"b6","z":12,"c":"#FFFFFF","a":"l","mw":161.0},[{"a":0.0,"b":0.2958,"c":"#D32F2F","q":"#68312D","l":"T1","lc":"#FFFFFF","lq":"#D2C1C0","u":false},{"a":0.2958,"b":0.7753,"c":"#FFD600","q":"#76661E","l":"T2","lc":"#111111","lq":"#D6D1BC","u":false},{"a":0.7753,"b":0.8739,"c":"#1565C0","q":"#2B425B","l":"T3","lc":"#FFFFFF","lq":"#BFC6CE","u":false},{"a":0.8739,"b":1.0,"c":"#D32F2F","q":"#68312D","l":"T1","lc":"#FFFFFF","lq":"#D2C1C0","u":false}],{"o":"bar","x":6,"y":176,"w":266,"h":14,"r":4,"track":"#36322C","segs":{"$":40},"p":0.0,"plain":"#AAA397","m":"#F4F0E8","g":"#141311","f":"d7","z":11},{"o":"t","x":314,"y":189,"t":"0%","f":"d6","z":17,"c":"#F4F0E8","a":"r","mw":22.0},{"o":"t","x":8,"y":206,"t":"ELAPSED","f":"b6","z":9,"c":"#AAA397","a":"l","ls":1,"mw":44.0},{"o":"t","x":8,"y":224,"t":"under 1 min","f":"d6","z":19,"c":"#F4F0E8","a":"l","mw":77.0},{"o":"t","x":113,"y":206,"t":"TIME LEFT","f":"b6","z":9,"c":"#AAA397","a":"l","ls":1,"mw":49.0},{"o":"t","x":113,"y":224,"t":"22 min","f":"d6","z":19,"c":"#F4F0E8","a":"l","mw":46.0},{"o":"t","x":113,"y":236,"t":"done around 6:21 PM","f":"b5","z":10,"c":"#AAA397","a":"l","mw":96,"k":{"in":1375.4,"fmt":"done around %s"}},{"o":"t","x":218,"y":206,"t":"CHANGES LEFT","f":"b6","z":9,"c":"#AAA397","a":"l","ls":1,"mw":73.0},{"o":"t","x":218,"y":224,"t":"4","f":"d6","z":19,"c":"#F4F0E8","a":"l","mw":10.0},{"o":"t","x":218,"y":236,"t":"of 4 in this job","f":"b5","z":10,"c":"#AAA397","a":"l","mw":64.0},{"o":"t","x":8,"y":224,"t":"1 min","f":"d6","z":19,"c":"#F4F0E8","a":"l","mw":35.0},{"o":"r","x":0,"y":0,"w":320,"h":240,"c":"#D32F2F"},{"o":"t","x":10,"y":15,"t":"TOOL CHANGE 1 OF 4","f":"b6","z":11,"c":"#F6D5D5","a":"l","ls":1,"mw":117.0},{"o":"t","x":310,"y":15,"t":"sample-sign","f":"b5","z":11,"c":"#F6D5D5","a":"r","mw":60.0},{"o":"t","x":10,"y":214,"t":"Put bit B in, then press the front button once.","f":"b7","z":15,"c":"#FFFFFF","a":"l","mw":299.0},{"o":"t","x":10,"y":231,"t":"After this: T2 2 × 8 mm ball end mill in about 5 min","f":"b5","z":12,"c":"#F6D5D5","a":"l","mw":253.0},{"o":"r","x":10,"y":190,"w":300,"h":2,"c":"#FFFFFF"},{"o":"t","x":10,"y":47,"t":"LOAD","f":"d7","z":24,"c":"#FFFFFF","a":"l","ls":2,"mw":51.0,"bl":"#E78D8D"},{"o":"r","x":220,"y":25,"w":92,"h":26,"c":"#FFFFFF","r":7},{"o":"r","x":222,"y":27,"w":88,"h":22,"c":"#F5F5F5","r":5},{"o":"t","x":230,"y":42.68,"t":"PROBE OUT","f":"b7","z":13,"c":"#111111","a":"l","ls":0.5,"mw":72.0},{"o":"r","x":10,"y":150,"w":300,"h":32,"c":"#EDACAC","r":6},{"o":"r","x":11,"y":151,"w":298,"h":30,"c":"#1D1B18","r":5},{"o":"t","x":18,"y":167,"t":"Bit B · 1 h 06 of 3 h used","f":"b6","z":13,"c":"#FFFFFF","a":"l","mw":134.0},{"o":"t","x":302,"y":166,"t":"TAP: ANOTHER","f":"b7","z":9,"c":"#D8D4CC","a":"r","ls":0.6,"mw":68.6},{"o":"r","x":18,"y":169,"w":284,"h":9,"c":"#4A4640","r":3},{"o":"r","x":18,"y":169,"w":112,"h":9,"c":"#2C6231","r":3},{"o":"r","x":18,"y":169,"w":104,"h":9,"c":"#3FB950","r":3},{"o":"t","x":10,"y":139,"t":"T1","f":"d7","z":112,"c":"#FFFFFF","a":"l","mw":85.0},{"o":"t","x":108.0,"y":118,"t":"3.175 × 12 mm","f":"b6","z":18,"c":"#FFFFFF","a":"l","mw":107.0},{"o":"t","x":108.0,"y":139,"t":"flat end mill","f":"b6","z":18,"c":"#FFFFFF","a":"l","mw":94.0},{"tool":1,"code":"T1","label":"3.175 × 12 mm flat end mill","color":"#D32F2F","text":"#FFFFFF","sticker":"Red","unset":false,"bit":{"label":"B","used":3990.6000000000004,"limit":10800.0,"choices":2,"job_adds":304.8,"state":"ok","text":"Bit B · 1 h 07 of 3 h used","used_text":"1 h 07"}},{"o":"r","x":6,"y":24,"w":308,"h":104,"c":"#D32F2F","r":8},{"o":"t","x":16,"y":41,"t":"CUTTING NOW","f":"b6","z":10,"c":"#F5D1D1","a":"l","ls":1,"mw":75.0},{"o":"t","x":304,"y":41,"t":"BIT B","f":"b6","z":10,"c":"#F5D1D1","a":"r","ls":1,"mw":28.0},{"o":"t","x":18,"y":94,"t":"T1","f":"d7","z":58,"c":"#FFFFFF","a":"l","mw":44.0},{"o":"t","x":73.0,"y":77,"t":"3.175 × 12 mm flat end mill","f":"b6","z":15,"c":"#FFFFFF","a":"l","mw":167.0},{"o":"t","x":73.0,"y":94,"t":"Bit B · 1 h 07 of 3 h used","f":"b5","z":12,"c":"#F5D1D1","a":"l","mw":116.0},{"o":"r","x":15,"y":107,"w":290,"h":12,"c":"#1D1B18","r":5},{"o":"r","x":16,"y":108,"w":288,"h":10,"c":"#4A4640","r":3},{"o":"r","x":16,"y":108,"w":114,"h":10,"c":"#2C6231","r":3},{"o":"r","x":16,"y":108,"w":106,"h":10,"c":"#3FB950","r":3},{"o":"r","x":6,"y":134,"w":308,"h":34,"c":"#FFD600","r":7},{"o":"t","x":16,"y":154.24,"t":"NEXT","f":"b6","z":9,"c":"#453C0D","a":"l","ls":1,"mw":26.0},{"o":"t","x":304,"y":157.5,"t":"in 5 min","f":"d7","z":18,"c":"#111111","a":"r","mw":53.0},{"o":"t","x":49.0,"y":157.5,"t":"T2","f":"d7","z":18,"c":"#111111","a":"l","mw":17.0},{"o":"t","x":75.0,"y":155.32,"t":"2 × 8 mm ball end mill · bit A","f":"b6","z":12,"c":"#111111","a":"l","mw":140.0},{"o":"bar","x":6,"y":176,"w":266,"h":14,"r":4,"track":"#36322C","segs":{"$":40},"p":7.42,"plain":"#AAA397","m":"#F4F0E8","g":"#141311","f":"d7","z":11},{"o":"t","x":314,"y":189,"t":"7%","f":"d6","z":17,"c":"#F4F0E8","a":"r","mw":21.0},{"o":"t","x":113,"y":224,"t":"21 min","f":"d6","z":19,"c":"#F4F0E8","a":"l","mw":43.0},{"o":"t","x":113,"y":236,"t":"done around 6:19 PM","f":"b5","z":10,"c":"#AAA397","a":"l","mw":96,"k":{"in":1273.4,"fmt":"done around %s"}},{"o":"t","x":218,"y":224,"t":"3","f":"d6","z":19,"c":"#F4F0E8","a":"l","mw":9.0},{"tool":1,"code":"T1","label":"3.175 × 12 mm flat end mill","color":"#D32F2F","text":"#FFFFFF","sticker":"Red","unset":false,"bit":{"label":"B","used":4008.6000000000004,"limit":10800.0,"choices":2,"job_adds":245.95000000000002,"state":"ok","text":"Bit B · 1 h 07 of 3 h used","used_text":"1 h 07"}},{"o":"r","x":16,"y":108,"w":113,"h":10,"c":"#2C6231","r":3},{"o":"t","x":304,"y":157.5,"t":"in 4 min","f":"d7","z":18,"c":"#111111","a":"r","mw":54.0},{"o":"bar","x":6,"y":176,"w":266,"h":14,"r":4,"track":"#36322C","segs":{"$":40},"p":11.69,"plain":"#AAA397","m":"#F4F0E8","g":"#141311","f":"d7","z":11},{"o":"t","x":314,"y":189,"t":"11%","f":"d6","z":17,"c":"#F4F0E8","a":"r","mw":24.0},{"o":"t","x":8,"y":224,"t":"2 min","f":"d6","z":19,"c":"#F4F0E8","a":"l","mw":38.0},{"o":"t","x":113,"y":224,"t":"20 min","f":"d6","z":19,"c":"#F4F0E8","a":"l","mw":47.0},{"o":"t","x":113,"y":236,"t":"done around 6:18 PM","f":"b5","z":10,"c":"#AAA397","a":"l","mw":96,"k":{"in":1214.5500000000002,"fmt":"done around %s"}},{"tool":1,"code":"T1","label":"3.175 × 12 mm flat end mill","color":"#D32F2F","text":"#FFFFFF","sticker":"Red","unset":false,"bit":{"label":"B","used":4026.6000000000004,"limit":10800.0,"choices":2,"job_adds":186.55,"state":"ok","text":"Bit B · 1 h 07 of 3 h used","used_text":"1 h 07"}},{"o":"r","x":16,"y":108,"w":112,"h":10,"c":"#2C6231","r":3},{"o":"r","x":16,"y":108,"w":107,"h":10,"c":"#3FB950","r":3},{"o":"t","x":304,"y":157.5,"t":"in 3 min","f":"d7","z":18,"c":"#111111","a":"r","mw":53.0},{"o":"bar","x":6,"y":176,"w":266,"h":14,"r":4,"track":"#36322C","segs":{"$":40},"p":16.01,"plain":"#AAA397","m":"#F4F0E8","g":"#141311","f":"d7","z":11},{"o":"t","x":314,"y":189,"t":"16%","f":"d6","z":17,"c":"#F4F0E8","a":"r","mw":26.0},{"o":"t","x":8,"y":224,"t":"3 min","f":"d6","z":19,"c":"#F4F0E8","a":"l","mw":38.0},{"o":"t","x":113,"y":224,"t":"19 min","f":"d6","z":19,"c":"#F4F0E8","a":"l","mw":43.0},{"o":"t","x":113,"y":236,"t":"done around 6:17 PM","f":"b5","z":10,"c":"#AAA397","a":"l","mw":96,"k":{"in":1155.15,"fmt":"done around %s"}},{"tool":1,"code":"T1","label":"3.175 × 12 mm flat end mill","color":"#D32F2F","text":"#FFFFFF","sticker":"Red","unset":false,"bit":{"label":"B","used":4044.6000000000004,"limit":10800.0,"choices":2,"job_adds":125.22500000000002,"state":"ok","text":"Bit B · 1 h 07 of 3 h used","used_text":"1 h 07"}},{"o":"r","x":16,"y":108,"w":111,"h":10,"c":"#2C6231","r":3},{"o":"t","x":304,"y":157.5,"t":"in 2 min","f":"d7","z":18,"c":"#111111","a":"r","mw":53.0},{"o":"bar","x":6,"y":176,"w":266,"h":14,"r":4,"track":"#36322C","segs":{"$":40},"p":20.47,"plain":"#AAA397","m":"#F4F0E8","g":"#141311","f":"d7","z":11},{"o":"t","x":314,"y":189,"t":"20%","f":"d6","z":17,"c":"#F4F0E8","a":"r","mw":29.0},{"o":"t","x":8,"y":224,"t":"4 min","f":"d6","z":19,"c":"#F4F0E8","a":"l","mw":39.0},{"o":"t","x":113,"y":224,"t":"18 min","f":"d6","z":19,"c":"#F4F0E8","a":"l","mw":43.0},{"o":"t","x":113,"y":236,"t":"done around 6:16 PM","f":"b5","z":10,"c":"#AAA397","a":"l","mw":96,"k":{"in":1093.825,"fmt":"done around %s"}},{"tool":1,"code":"T1","label":"3.175 × 12 mm flat end mill","color":"#D32F2F","text":"#FFFFFF","sticker":"Red","unset":false,"bit":{"label":"B","used":4062.6000000000004,"limit":10800.0,"choices":2,"job_adds":65.84999999999997,"state":"ok","text":"Bit B · 1 h 08 of 3 h used","used_text":"1 h 08"}},{"o":"t","x":73.0,"y":94,"t":"Bit B · 1 h 08 of 3 h used","f":"b5","z":12,"c":"#F5D1D1","a":"l","mw":116.0},{"o":"r","x":16,"y":108,"w":110,"h":10,"c":"#2C6231","r":3},{"o":"r","x":16,"y":108,"w":108,"h":10,"c":"#3FB950","r":3},{"o":"t","x":304,"y":157.5,"t":"in 1 min","f":"d7","z":18,"c":"#111111","a":"r","mw":50.0},{"o":"bar","x":6,"y":176,"w":266,"h":14,"r":4,"track":"#36322C","segs":{"$":40},"p":24.79,"plain":"#AAA397","m":"#F4F0E8","g":"#141311","f":"d7","z":11},{"o":"t","x":314,"y":189,"t":"24%","f":"d6","z":17,"c":"#F4F0E8","a":"r","mw":29.0},{"o":"t","x":8,"y":224,"t":"5 min","f":"d6","z":19,"c":"#F4F0E8","a":"l","mw":38.0},{"o":"t","x":113,"y":224,"t":"17 min","f":"d6","z":19,"c":"#F4F0E8","a":"l","mw":42.0},{"o":"t","x":113,"y":236,"t":"done around 6:15 PM","f":"b5","z":10,"c":"#AAA397","a":"l","mw":96,"k":{"in":1034.45,"fmt":"done around %s"}},{"tool":1,"code":"T1","label":"3.175 × 12 mm flat end mill","color":"#D32F2F","text":"#FFFFFF","sticker":"Red","unset":false,"bit":{"label":"B","used":4080.6000000000004,"limit":10800.0,"choices":2,"job_adds":6.099999999999966,"state":"ok","text":"Bit B · 1 h 08 of 3 h used","used_text":"1 h 08"}},{"o":"r","x":16,"y":108,"w":108,"h":10,"c":"#2C6231","r":3},{"o":"t","x":304,"y":157.5,"t":"in under 1 min","f":"d7","z":18,"c":"#111111","a":"r","mw":92.0},{"o":"t","x":75.0,"y":155.32,"t":"2 × 8 mm ball end mill…","f":"b6","z":12,"c":"#111111","a":"l","mw":119.0},{"o":"bar","x":6,"y":176,"w":266,"h":14,"r":4,"track":"#36322C","segs":{"$":40},"p":29.13,"plain":"#AAA397","m":"#F4F0E8","g":"#141311","f":"d7","z":11},{"o":"t","x":314,"y":189,"t":"29%","f":"d6","z":17,"c":"#F4F0E8","a":"r","mw":28.0},{"o":"t","x":8,"y":224,"t":"6 min","f":"d6","z":19,"c":"#F4F0E8","a":"l","mw":38.0},{"o":"t","x":113,"y":224,"t":"16 min","f":"d6","z":19,"c":"#F4F0E8","a":"l","mw":43.0},{"o":"t","x":113,"y":236,"t":"done around 6:14 PM","f":"b5","z":10,"c":"#AAA397","a":"l","mw":96,"k":{"in":974.7,"fmt":"done around %s"}},{"tool":1,"code":"T1","label":"3.175 × 12 mm flat end mill","color":"#D32F2F","text":"#FFFFFF","sticker":"Red","unset":false,"bit":{"label":"B","used":4081.8000000000006,"limit":10800.0,"choices":2,"job_adds":4.574999999999989,"state":"ok","text":"Bit B · 1 h 08 of 3 h used","used_text":"1 h 08"}},{"o":"r","x":0,"y":0,"w":320,"h":240,"c":"#FFD600"},{"o":"t","x":10,"y":15,"t":"TOOL CHANGE 2 OF 4","f":"b6","z":11,"c":"#41380E","a":"l","ls":1,"mw":119.0},{"o":"t","x":310,"y":15,"t":"sample-sign","f":"b5","z":11,"c":"#41380E","a":"r","mw":60.0},{"o":"t","x":10,"y":214,"t":"Put bit A in, then press the front button once.","f":"b7","z":15,"c":"#111111","a":"l","mw":300.0},{"o":"t","x":10,"y":231,"t":"After this: T3 60° V-bit, 0.1 mm tip in about 11 min","f":"b5","z":12,"c":"#41380E","a":"l","mw":249.0},{"o":"r","x":10,"y":190,"w":300,"h":2,"c":"#111111"},{"o":"t","x":10,"y":47,"t":"LOAD","f":"d7","z":24,"c":"#111111","a":"l","ls":2,"mw":51.0,"bl":"#947D08"},{"o":"r","x":10,"y":150,"w":300,"h":32,"c":"#70600A","r":6},{"o":"t","x":18,"y":167,"t":"Bit A · 2 h 18 of 3 h used","f":"b6","z":13,"c":"#FFFFFF","a":"l","mw":134.0},{"o":"r","x":18,"y":169,"w":235,"h":9,"c":"#7A5A29","r":3},{"o":"r","x":18,"y":169,"w":217,"h":9,"c":"#D5B33C","r":3},{"o":"t","x":10,"y":139,"t":"T2","f":"d7","z":112,"c":"#111111","a":"l","mw":102.0},{"o":"t","x":125.0,"y":139,"t":"2 × 8 mm ball end mill","f":"b6","z":18,"c":"#111111","a":"l","mw":168.0},{"tool":2,"code":"T2","label":"2 × 8 mm ball end mill","color":"#FFD600","text":"#111111","sticker":"Yellow","unset":false,"bit":{"label":"A","used":8402.1,"limit":10800.0,"choices":3,"job_adds":659.5,"state":"ok","text":"Bit A · 2 h 20 of 3 h used","used_text":"2 h 20"}},{"o":"r","x":6,"y":24,"w":308,"h":104,"c":"#FFD600","r":8},{"o":"t","x":16,"y":41,"t":"CUTTING NOW","f":"b6","z":10,"c":"#453C0D","a":"l","ls":1,"mw":75.0},{"o":"t","x":304,"y":41,"t":"BIT A","f":"b6","z":10,"c":"#453C0D","a":"r","ls":1,"mw":28.0},{"o":"t","x":18,"y":94,"t":"T2","f":"d7","z":58,"c":"#111111","a":"l","mw":53.0},{"o":"t","x":82.0,"y":77,"t":"2 × 8 mm ball end mill","f":"b6","z":15,"c":"#111111","a":"l","mw":138.0},{"o":"t","x":82.0,"y":94,"t":"Bit A · 2 h 20 of 3 h used","f":"b5","z":12,"c":"#453C0D","a":"l","mw":121.0},{"o":"r","x":16,"y":108,"w":241,"h":10,"c":"#7A5729","r":3},{"o":"r","x":16,"y":108,"w":224,"h":10,"c":"#DCB33C","r":3},{"o":"r","x":6,"y":134,"w":308,"h":34,"c":"#1565C0","r":7},{"o":"t","x":16,"y":154.24,"t":"NEXT","f":"b6","z":9,"c":"#CCDDF1","a":"l","ls":1,"mw":26.0},{"o":"t","x":304,"y":157.5,"t":"in 11 min","f":"d7","z":18,"c":"#FFFFFF","a":"r","mw":55.0},{"o":"t","x":49.0,"y":157.5,"t":"T3","f":"d7","z":18,"c":"#FFFFFF","a":"l","mw":17.0},{"o":"t","x":75.0,"y":155.32,"t":"60° V-bit, 0.1 mm tip · bit A","f":"b6","z":12,"c":"#FFFFFF","a":"l","mw":135.0},{"o":"bar","x":6,"y":176,"w":266,"h":14,"r":4,"track":"#36322C","segs":{"$":40},"p":29.58,"plain":"#AAA397","m":"#F4F0E8","g":"#141311","f":"d7","z":11},{"o":"t","x":113,"y":236,"t":"done around 6:14 PM","f":"b5","z":10,"c":"#AAA397","a":"l","mw":96,"k":{"in":968.6000000000001,"fmt":"done around %s"}},{"o":"t","x":218,"y":224,"t":"2","f":"d6","z":19,"c":"#F4F0E8","a":"l","mw":9.0},{"tool":2,"code":"T2","label":"2 × 8 mm ball end mill","color":"#FFD600","text":"#111111","sticker":"Yellow","unset":false,"bit":{"label":"A","used":8420.1,"limit":10800.0,"choices":3,"job_adds":600.6999999999999,"state":"ok","text":"Bit A · 2 h 20 of 3 h used","used_text":"2 h 20"}},{"o":"r","x":16,"y":108,"w":240,"h":10,"c":"#7A5829","r":3},{"o":"r","x":16,"y":108,"w":224,"h":10,"c":"#DDB23B","r":3},{"o":"t","x":304,"y":157.5,"t":"in 10 min","f":"d7","z":18,"c":"#FFFFFF","a":"r","mw":58.0},{"o":"bar","x":6,"y":176,"w":266,"h":14,"r":4,"track":"#36322C","segs":{"$":40},"p":33.85,"plain":"#AAA397","m":"#F4F0E8","g":"#141311","f":"d7","z":11},{"o":"t","x":314,"y":189,"t":"33%","f":"d6","z":17,"c":"#F4F0E8","a":"r","mw":28.0},{"o":"t","x":8,"y":224,"t":"7 min","f":"d6","z":19,"c":"#F4F0E8","a":"l","mw":37.0},{"o":"t","x":113,"y":224,"t":"15 min","f":"d6","z":19,"c":"#F4F0E8","a":"l","mw":43.0},{"o":"t","x":113,"y":236,"t":"done around 6:13 PM","f":"b5","z":10,"c":"#AAA397","a":"l","mw":96,"k":{"in":909.8000000000001,"fmt":"done around %s"}},{"tool":2,"code":"T2","label":"2 × 8 mm ball end mill","color":"#FFD600","text":"#111111","sticker":"Yellow","unset":false,"bit":{"label":"A","used":8438.1,"limit":10800.0,"choices":3,"job_adds":539.5249999999999,"state":"ok","text":"Bit A · 2 h 21 of 3 h used","used_text":"2 h 21"}},{"o":"t","x":82.0,"y":94,"t":"Bit A · 2 h 21 of 3 h used","f":"b5","z":12,"c":"#453C0D","a":"l","mw":118.0},{"o":"r","x":16,"y":108,"w":239,"h":10,"c":"#7A5929","r":3},{"o":"r","x":16,"y":108,"w":225,"h":10,"c":"#DDB23B","r":3},{"o":"t","x":304,"y":157.5,"t":"in 9 min","f":"d7","z":18,"c":"#FFFFFF","a":"r","mw":53.0},{"o":"bar","x":6,"y":176,"w":266,"h":14,"r":4,"track":"#36322C","segs":{"$":40},"p":38.3,"plain":"#AAA397","m":"#F4F0E8","g":"#141311","f":"d7","z":11},{"o":"t","x":314,"y":189,"t":"38%","f":"d6","z":17,"c":"#F4F0E8","a":"r","mw":28.0},{"o":"t","x":8,"y":224,"t":"8 min","f":"d6","z":19,"c":"#F4F0E8","a":"l","mw":38.0},{"o":"t","x":113,"y":224,"t":"14 min","f":"d6","z":19,"c":"#F4F0E8","a":"l","mw":44.0},{"o":"t","x":113,"y":236,"t":"done around 6:12 PM","f":"b5","z":10,"c":"#AAA397","a":"l","mw":96,"k":{"in":848.625,"fmt":"done around %s"}},{"tool":2,"code":"T2","label":"2 × 8 mm ball end mill","color":"#FFD600","text":"#111111","sticker":"Yellow","unset":false,"bit":{"label":"A","used":8456.1,"limit":10800.0,"choices":3,"job_adds":479.51249999999993,"state":"ok","text":"Bit A · 2 h 21 of 3 h used","used_text":"2 h 21"}},{"o":"r","x":16,"y":108,"w":238,"h":10,"c":"#7A5A29","r":3},{"o":"r","x":16,"y":108,"w":225,"h":10,"c":"#DEB23B","r":3},{"o":"t","x":304,"y":157.5,"t":"in 8 min","f":"d7","z":18,"c":"#FFFFFF","a":"r","mw":53.0},{"o":"bar","x":6,"y":176,"w":266,"h":14,"r":4,"track":"#36322C","segs":{"$":40},"p":42.66,"plain":"#AAA397","m":"#F4F0E8","g":"#141311","f":"d7","z":11},{"o":"t","x":314,"y":189,"t":"42%","f":"d6","z":17,"c":"#F4F0E8","a":"r","mw":29.0},{"o":"t","x":8,"y":224,"t":"9 min","f":"d6","z":19,"c":"#F4F0E8","a":"l","mw":38.0},{"o":"t","x":113,"y":224,"t":"13 min","f":"d6","z":19,"c":"#F4F0E8","a":"l","mw":43.0},{"o":"t","x":113,"y":236,"t":"done around 6:11 PM","f":"b5","z":10,"c":"#AAA397","a":"l","mw":96,"k":{"in":788.6125000000001,"fmt":"done around %s"}},{"tool":2,"code":"T2","label":"2 × 8 mm ball end mill","color":"#FFD600","text":"#111111","sticker":"Yellow","unset":false,"bit":{"label":"A","used":8474.1,"limit":10800.0,"choices":3,"job_adds":419.5,"state":"ok","text":"Bit A · 2 h 21 of 3 h used","used_text":"2 h 21"}},{"o":"r","x":16,"y":108,"w":237,"h":10,"c":"#7A5A28","r":3},{"o":"r","x":16,"y":108,"w":225,"h":10,"c":"#DFB23B","r":3},{"o":"t","x":304,"y":157.5,"t":"in 7 min","f":"d7","z":18,"c":"#FFFFFF","a":"r","mw":52.0},{"o":"bar","x":6,"y":176,"w":266,"h":14,"r":4,"track":"#36322C","segs":{"$":40},"p":47.03,"plain":"#AAA397","m":"#F4F0E8","g":"#141311","f":"d7","z":11},{"o":"t","x":314,"y":189,"t":"47%","f":"d6","z":17,"c":"#F4F0E8","a":"r","mw":29.0},{"o":"t","x":8,"y":224,"t":"10 min","f":"d6","z":19,"c":"#F4F0E8","a":"l","mw":44.0},{"o":"t","x":113,"y":224,"t":"12 min","f":"d6","z":19,"c":"#F4F0E8","a":"l","mw":43.0},{"o":"t","x":113,"y":236,"t":"done around 6:10 PM","f":"b5","z":10,"c":"#AAA397","a":"l","mw":96,"k":{"in":728.6000000000001,"fmt":"done around %s"}},{"tool":2,"code":"T2","label":"2 × 8 mm ball end mill","color":"#FFD600","text":"#111111","sticker":"Yellow","unset":false,"bit":{"label":"A","used":8492.1,"limit":10800.0,"choices":3,"job_adds":359.6587573891115,"state":"ok","text":"Bit A · 2 h 22 of 3 h used","used_text":"2 h 22"}},{"o":"t","x":82.0,"y":94,"t":"Bit A · 2 h 22 of 3 h used","f":"b5","z":12,"c":"#453C0D","a":"l","mw":121.0},{"o":"r","x":16,"y":108,"w":236,"h":10,"c":"#795B28","r":3},{"o":"r","x":16,"y":108,"w":226,"h":10,"c":"#E0B23B","r":3},{"o":"t","x":304,"y":157.5,"t":"in 6 min","f":"d7","z":18,"c":"#FFFFFF","a":"r","mw":53.0},{"o":"bar","x":6,"y":176,"w":266,"h":14,"r":4,"track":"#36322C","segs":{"$":40},"p":51.39,"plain":"#AAA397","m":"#F4F0E8","g":"#141311","f":"d7","z":11},{"o":"t","x":314,"y":189,"t":"51%","f":"d6","z":17,"c":"#F4F0E8","a":"r","mw":26.0},{"o":"t","x":8,"y":224,"t":"11 min","f":"d6","z":19,"c":"#F4F0E8","a":"l","mw":40.0},{"o":"t","x":113,"y":224,"t":"11 min","f":"d6","z":19,"c":"#F4F0E8","a":"l","mw":40.0},{"o":"t","x":113,"y":236,"t":"done around 6:09 PM","f":"b5","z":10,"c":"#AAA397","a":"l","mw":96,"k":{"in":668.8737547021618,"fmt":"done around %s"}},{"tool":2,"code":"T2","label":"2 × 8 mm ball end mill","color":"#FFD600","text":"#111111","sticker":"Yellow","unset":false,"bit":{"label":"A","used":8510.1,"limit":10800.0,"choices":3,"job_adds":299.50896380445204,"state":"ok","text":"Bit A · 2 h 22 of 3 h used","used_text":"2 h 22"}},{"o":"r","x":16,"y":108,"w":234,"h":10,"c":"#795C28","r":3},{"o":"r","x":16,"y":108,"w":226,"h":10,"c":"#E1B23B","r":3},{"o":"t","x":304,"y":157.5,"t":"in 5 min","f":"d7","z":18,"c":"#FFFFFF","a":"r","mw":53.0},{"o":"bar","x":6,"y":176,"w":266,"h":14,"r":4,"track":"#36322C","segs":{"$":40},"p":55.75,"plain":"#AAA397","m":"#F4F0E8","g":"#141311","f":"d7","z":11},{"o":"t","x":314,"y":189,"t":"55%","f":"d6","z":17,"c":"#F4F0E8","a":"r","mw":28.0},{"o":"t","x":8,"y":224,"t":"12 min","f":"d6","z":19,"c":"#F4F0E8","a":"l","mw":43.0},{"o":"t","x":113,"y":224,"t":"10 min","f":"d6","z":19,"c":"#F4F0E8","a":"l","mw":44.0},{"o":"t","x":113,"y":236,"t":"done around 6:08 PM","f":"b5","z":10,"c":"#AAA397","a":"l","mw":96,"k":{"in":608.6053144140466,"fmt":"done around %s"}},{"tool":2,"code":"T2","label":"2 × 8 mm ball end mill","color":"#FFD600","text":"#111111","sticker":"Yellow","unset":false,"bit":{"label":"A","used":8528.1,"limit":10800.0,"choices":3,"job_adds":239.37533246618838,"state":"ok","text":"Bit A · 2 h 22 of 3 h used","used_text":"2 h 22"}},{"o":"r","x":16,"y":108,"w":233,"h":10,"c":"#795D28","r":3},{"o":"r","x":16,"y":108,"w":227,"h":10,"c":"#E2B23B","r":3},{"o":"t","x":304,"y":157.5,"t":"in 3 min","f":"d7","z":18,"c":"#FFFFFF","a":"r","mw":53.0},{"o":"bar","x":6,"y":176,"w":266,"h":14,"r":4,"track":"#36322C","segs":{"$":40},"p":60.11,"plain":"#AAA397","m":"#F4F0E8","g":"#141311","f":"d7","z":11},{"o":"t","x":314,"y":189,"t":"60%","f":"d6","z":17,"c":"#F4F0E8","a":"r","mw":29.0},{"o":"t","x":8,"y":224,"t":"13 min","f":"d6","z":19,"c":"#F4F0E8","a":"l","mw":43.0},{"o":"t","x":113,"y":224,"t":"9 min","f":"d6","z":19,"c":"#F4F0E8","a":"l","mw":38.0},{"o":"t","x":113,"y":236,"t":"done around 6:07 PM","f":"b5","z":10,"c":"#AAA397","a":"l","mw":96,"k":{"in":548.314435870359,"fmt":"done around %s"}},{"tool":2,"code":"T2","label":"2 × 8 mm ball end mill","color":"#FFD600","text":"#111111","sticker":"Yellow","unset":false,"bit":{"label":"A","used":8546.1,"limit":10800.0,"choices":3,"job_adds":179.4119052567848,"state":"ok","text":"Bit A · 2 h 22 of 3 h used","used_text":"2 h 22"}},{"o":"r","x":16,"y":108,"w":232,"h":10,"c":"#795E28","r":3},{"o":"r","x":16,"y":108,"w":227,"h":10,"c":"#E3B23B","r":3},{"o":"t","x":304,"y":157.5,"t":"in 2 min","f":"d7","z":18,"c":"#FFFFFF","a":"r","mw":53.0},{"o":"bar","x":6,"y":176,"w":266,"h":14,"r":4,"track":"#36322C","segs":{"$":40},"p":64.48,"plain":"#AAA397","m":"#F4F0E8","g":"#141311","f":"d7","z":11},{"o":"t","x":314,"y":189,"t":"64%","f":"d6","z":17,"c":"#F4F0E8","a":"r","mw":29.0},{"o":"t","x":8,"y":224,"t":"14 min","f":"d6","z":19,"c":"#F4F0E8","a":"l","mw":44.0},{"o":"t","x":113,"y":224,"t":"8 min","f":"d6","z":19,"c":"#F4F0E8","a":"l","mw":38.0},{"o":"t","x":113,"y":236,"t":"done around 6:06 PM","f":"b5","z":10,"c":"#AAA397","a":"l","mw":96,"k":{"in":488.3602056181898,"fmt":"done around %s"}},{"tool":2,"code":"T2","label":"2 × 8 mm ball end mill","color":"#FFD600","text":"#111111","sticker":"Yellow","unset":false,"bit":{"label":"A","used":8564.1,"limit":10800.0,"choices":3,"job_adds":119.44551842215714,"state":"ok","text":"Bit A · 2 h 23 of 3 h used","used_text":"2 h 23"}},{"o":"t","x":82.0,"y":94,"t":"Bit A · 2 h 23 of 3 h used","f":"b5","z":12,"c":"#453C0D","a":"l","mw":120.0},{"o":"r","x":16,"y":108,"w":231,"h":10,"c":"#785E27","r":3},{"o":"r","x":16,"y":108,"w":228,"h":10,"c":"#E4B23B","r":3},{"o":"bar","x":6,"y":176,"w":266,"h":14,"r":4,"track":"#36322C","segs":{"$":40},"p":68.84,"plain":"#AAA397","m":"#F4F0E8","g":"#141311","f":"d7","z":11},{"o":"t","x":314,"y":189,"t":"68%","f":"d6","z":17,"c":"#F4F0E8","a":"r","mw":28.0},{"o":"t","x":8,"y":224,"t":"15 min","f":"d6","z":19,"c":"#F4F0E8","a":"l","mw":43.0},{"o":"t","x":113,"y":224,"t":"7 min","f":"d6","z":19,"c":"#F4F0E8","a":"l","mw":37.0},{"o":"t","x":113,"y":236,"t":"done around 6:05 PM","f":"b5","z":10,"c":"#AAA397","a":"l","mw":96,"k":{"in":428.33997350928394,"fmt":"done around %s"}},{"tool":2,"code":"T2","label":"2 × 8 mm ball end mill","color":"#FFD600","text":"#111111","sticker":"Yellow","unset":false,"bit":{"label":"A","used":8582.1,"limit":10800.0,"choices":3,"job_adds":59.459483763862366,"state":"ok","text":"Bit A · 2 h 23 of 3 h used","used_text":"2 h 23"}},{"o":"r","x":16,"y":108,"w":230,"h":10,"c":"#785F27","r":3},{"o":"r","x":16,"y":108,"w":228,"h":10,"c":"#E5B23A","r":3},{"o":"t","x":304,"y":157.5,"t":"in under 1 min","f":"d7","z":18,"c":"#FFFFFF","a":"r","mw":92.0},{"o":"t","x":75.0,"y":155.32,"t":"60° V-bit, 0.1 mm tip…","f":"b6","z":12,"c":"#FFFFFF","a":"l","mw":114.0},{"o":"bar","x":6,"y":176,"w":266,"h":14,"r":4,"track":"#36322C","segs":{"$":40},"p":73.2,"plain":"#AAA397","m":"#F4F0E8","g":"#141311","f":"d7","z":11},{"o":"t","x":314,"y":189,"t":"73%","f":"d6","z":17,"c":"#F4F0E8","a":"r","mw":28.0},{"o":"t","x":8,"y":224,"t":"16 min","f":"d6","z":19,"c":"#F4F0E8","a":"l","mw":43.0},{"o":"t","x":113,"y":224,"t":"6 min","f":"d6","z":19,"c":"#F4F0E8","a":"l","mw":38.0},{"o":"t","x":113,"y":236,"t":"done around 6:04 PM","f":"b5","z":10,"c":"#AAA397","a":"l","mw":96,"k":{"in":368.28412449328704,"fmt":"done around %s"}},{"tool":2,"code":"T2","label":"2 × 8 mm ball end mill","color":"#FFD600","text":"#111111","sticker":"Yellow","unset":false,"bit":{"label":"A","used":8599.8,"limit":10800.0,"choices":3,"job_adds":0.224729110943879,"state":"ok","text":"Bit A · 2 h 23 of 3 h used","used_text":"2 h 23"}},{"o":"r","x":0,"y":0,"w":320,"h":240,"c":"#1565C0"},{"o":"t","x":10,"y":15,"t":"TOOL CHANGE 3 OF 4","f":"b6","z":11,"c":"#D0E0F2","a":"l","ls":1,"mw":119.0},{"o":"t","x":310,"y":15,"t":"sample-sign","f":"b5","z":11,"c":"#D0E0F2","a":"r","mw":60.0},{"o":"t","x":10,"y":214,"t":"Put bit A in, then press the front button once.","f":"b7","z":15,"c":"#FFFFFF","a":"l","mw":300.0},{"o":"t","x":10,"y":231,"t":"After this: T1 3.175 × 12 mm flat end mill in about 2 min","f":"b5","z":12,"c":"#D0E0F2","a":"l","mw":272.0},{"o":"t","x":10,"y":47,"t":"LOAD","f":"d7","z":24,"c":"#FFFFFF","a":"l","ls":2,"mw":51.0,"bl":"#7EAADC"},{"o":"r","x":165,"y":25,"w":147,"h":26,"c":"#FFFFFF","r":7},{"o":"r","x":167,"y":27,"w":143,"h":22,"c":"#FFD600","r":5},{"o":"t","x":175,"y":42.68,"t":"T2 BACK IN YELLOW","f":"b7","z":13,"c":"#111111","a":"l","ls":0.5,"mw":127.0},{"o":"r","x":10,"y":150,"w":300,"h":32,"c":"#A1C1E6","r":6},{"o":"t","x":18,"y":167,"t":"Bit A · 24 min of 2 h used","f":"b6","z":13,"c":"#FFFFFF","a":"l","mw":141.0},{"o":"r","x":18,"y":169,"w":62,"h":9,"c":"#2C6231","r":3},{"o":"r","x":18,"y":169,"w":56,"h":9,"c":"#3FB950","r":3},{"o":"t","x":10,"y":139,"t":"T3","f":"d7","z":112,"c":"#FFFFFF","a":"l","mw":102.0},{"o":"t","x":125.0,"y":139,"t":"60° V-bit, 0.1 mm tip","f":"b6","z":18,"c":"#FFFFFF","a":"l","mw":162.0},{"tool":3,"code":"T3","label":"60° V-bit, 0.1 mm tip","color":"#1565C0","text":"#FFFFFF","sticker":"Blue","unset":false,"bit":{"label":"A","used":1759.8,"limit":7200.0,"choices":2,"job_adds":135.53662380042988,"state":"ok","text":"Bit A · 29 min of 2 h used","used_text":"29 min"}},{"o":"r","x":6,"y":24,"w":308,"h":104,"c":"#1565C0","r":8},{"o":"t","x":16,"y":41,"t":"CUTTING NOW","f":"b6","z":10,"c":"#CCDDF1","a":"l","ls":1,"mw":75.0},{"o":"t","x":304,"y":41,"t":"BIT A","f":"b6","z":10,"c":"#CCDDF1","a":"r","ls":1,"mw":28.0},{"o":"t","x":18,"y":94,"t":"T3","f":"d7","z":58,"c":"#FFFFFF","a":"l","mw":53.0},{"o":"t","x":82.0,"y":77,"t":"60° V-bit, 0.1 mm tip","f":"b6","z":15,"c":"#FFFFFF","a":"l","mw":133.0},{"o":"t","x":82.0,"y":94,"t":"Bit A · 29 min of 2 h used","f":"b5","z":12,"c":"#CCDDF1","a":"l","mw":125.0},{"o":"r","x":16,"y":108,"w":75,"h":10,"c":"#2C6231","r":3},{"o":"r","x":16,"y":108,"w":70,"h":10,"c":"#3FB950","r":3},{"o":"bar","x":6,"y":176,"w":266,"h":14,"r":4,"track":"#36322C","segs":{"$":40},"p":77.53,"plain":"#AAA397","m":"#F4F0E8","g":"#141311","f":"d7","z":11},{"o":"t","x":314,"y":189,"t":"77%","f":"d6","z":17,"c":"#F4F0E8","a":"r","mw":28.0},{"o":"t","x":8,"y":224,"t":"17 min","f":"d6","z":19,"c":"#F4F0E8","a":"l","mw":42.0},{"o":"t","x":113,"y":224,"t":"5 min","f":"d6","z":19,"c":"#F4F0E8","a":"l","mw":38.0},{"o":"t","x":113,"y":236,"t":"done around 6:03 PM","f":"b5","z":10,"c":"#AAA397","a":"l","mw":96,"k":{"in":308.72785863458273,"fmt":"done around %s"}},{"o":"t","x":218,"y":224,"t":"1","f":"d6","z":19,"c":"#F4F0E8","a":"l","mw":6.0},{"tool":3,"code":"T3","label":"60° V-bit, 0.1 mm tip","color":"#1565C0","text":"#FFFFFF","sticker":"Blue","unset":false,"bit":{"label":"A","used":1777.8,"limit":7200.0,"choices":2,"job_adds":76.35435633405663,"state":"ok","text":"Bit A · 30 min of 2 h used","used_text":"30 min"}},{"o":"t","x":82.0,"y":94,"t":"Bit A · 30 min of 2 h used","f":"b5","z":12,"c":"#CCDDF1","a":"l","mw":125.0},{"o":"r","x":16,"y":108,"w":74,"h":10,"c":"#2C6231","r":3},{"o":"r","x":16,"y":108,"w":71,"h":10,"c":"#3FB950","r":3},{"o":"bar","x":6,"y":176,"w":266,"h":14,"r":4,"track":"#36322C","segs":{"$":40},"p":81.83,"plain":"#AAA397","m":"#F4F0E8","g":"#141311","f":"d7","z":11},{"o":"t","x":314,"y":189,"t":"81%","f":"d6","z":17,"c":"#F4F0E8","a":"r","mw":26.0},{"o":"t","x":8,"y":224,"t":"18 min","f":"d6","z":19,"c":"#F4F0E8","a":"l","mw":43.0},{"o":"t","x":113,"y":224,"t":"4 min","f":"d6","z":19,"c":"#F4F0E8","a":"l","mw":39.0},{"o":"t","x":113,"y":236,"t":"done around 6:02 PM","f":"b5","z":10,"c":"#AAA397","a":"l","mw":96,"k":{"in":249.53742223759383,"fmt":"done around %s"}},{"tool":3,"code":"T3","label":"60° V-bit, 0.1 mm tip","color":"#1565C0","text":"#FFFFFF","sticker":"Blue","unset":false,"bit":{"label":"A","used":1795.8,"limit":7200.0,"choices":2,"job_adds":15.92015896861454,"state":"ok","text":"Bit A · 30 min of 2 h used","used_text":"30 min"}},{"o":"r","x":16,"y":108,"w":72,"h":10,"c":"#2C6231","r":3},{"o":"t","x":72.0,"y":155.32,"t":"3.175 × 12 mm flat end…","f":"b6","z":12,"c":"#FFFFFF","a":"l","mw":120.0},{"o":"bar","x":6,"y":176,"w":266,"h":14,"r":4,"track":"#36322C","segs":{"$":40},"p":86.23,"plain":"#AAA397","m":"#F4F0E8","g":"#141311","f":"d7","z":11},{"o":"t","x":314,"y":189,"t":"86%","f":"d6","z":17,"c":"#F4F0E8","a":"r","mw":28.0},{"o":"t","x":8,"y":224,"t":"19 min","f":"d6","z":19,"c":"#F4F0E8","a":"l","mw":43.0},{"o":"t","x":113,"y":224,"t":"3 min","f":"d6","z":19,"c":"#F4F0E8","a":"l","mw":38.0},{"o":"t","x":113,"y":236,"t":"done around 6:01 PM","f":"b5","z":10,"c":"#AAA397","a":"l","mw":96,"k":{"in":189.13148854714083,"fmt":"done around %s"}},{"tool":3,"code":"T3","label":"60° V-bit, 0.1 mm tip","color":"#1565C0","text":"#FFFFFF","sticker":"Blue","unset":false,"bit":{"label":"A","used":1800.6,"limit":7200.0,"choices":2,"job_adds":1.473395104546196,"state":"ok","text":"Bit A · 30 min of 2 h used","used_text":"30 min"}},{"o":"t","x":10,"y":15,"t":"TOOL CHANGE 4 OF 4","f":"b6","z":11,"c":"#F6D5D5","a":"l","ls":1,"mw":119.0},{"o":"t","x":10,"y":231,"t":"Last bit of the job","f":"b5","z":12,"c":"#F6D5D5","a":"l","mw":91.0},{"o":"r","x":184,"y":25,"w":128,"h":26,"c":"#FFFFFF","r":7},{"o":"r","x":186,"y":27,"w":124,"h":22,"c":"#1565C0","r":5},{"o":"t","x":194,"y":42.68,"t":"T3 BACK IN BLUE","f":"b7","z":13,"c":"#FFFFFF","a":"l","ls":0.5,"mw":108.0},{"tool":1,"code":"T1","label":"3.175 × 12 mm flat end mill","color":"#D32F2F","text":"#FFFFFF","sticker":"Red","unset":false,"bit":{"label":"B","used":4320.6,"limit":10800.0,"choices":2,"job_adds":173.23708487500383,"state":"ok","text":"Bit B · 1 h 12 of 3 h used","used_text":"1 h 12"}},{"o":"t","x":73.0,"y":94,"t":"Bit B · 1 h 12 of 3 h used","f":"b5","z":12,"c":"#F5D1D1","a":"l","mw":114.0},{"o":"r","x":16,"y":108,"w":119,"h":10,"c":"#2C6231","r":3},{"o":"r","x":16,"y":108,"w":115,"h":10,"c":"#3FB950","r":3},{"o":"r","x":6,"y":134,"w":308,"h":34,"c":"#36322C","r":7},{"o":"r","x":7,"y":135,"w":306,"h":32,"c":"#1E1C19","r":6},{"o":"t","x":16,"y":154.24,"t":"LAST BIT","f":"b6","z":9,"c":"#C5C1BA","a":"l","ls":1,"mw":44.0},{"o":"t","x":304,"y":157.5,"t":"done in 2 min","f":"d7","z":18,"c":"#F4F0E8","a":"r","mw":89.0},{"o":"t","x":67.0,"y":155.32,"t":"No more tool changes","f":"b6","z":12,"c":"#F4F0E8","a":"l","mw":116.0},{"o":"bar","x":6,"y":176,"w":266,"h":14,"r":4,"track":"#36322C","segs":{"$":40},"p":87.39,"plain":"#AAA397","m":"#F4F0E8","g":"#141311","f":"d7","z":11},{"o":"t","x":314,"y":189,"t":"87%","f":"d6","z":17,"c":"#F4F0E8","a":"r","mw":28.0},{"o":"t","x":8,"y":224,"t":"20 min","f":"d6","z":19,"c":"#F4F0E8","a":"l","mw":47.0},{"o":"t","x":113,"y":224,"t":"2 min","f":"d6","z":19,"c":"#F4F0E8","a":"l","mw":38.0},{"o":"t","x":113,"y":236,"t":"done around 6:01 PM","f":"b5","z":10,"c":"#AAA397","a":"l","mw":96,"k":{"in":173.23708487500383,"fmt":"done around %s"}},{"o":"t","x":218,"y":224,"t":"0","f":"d6","z":19,"c":"#F4F0E8","a":"l","mw":10.0},{"tool":1,"code":"T1","label":"3.175 × 12 mm flat end mill","color":"#D32F2F","text":"#FFFFFF","sticker":"Red","unset":false,"bit":{"label":"B","used":4338.6,"limit":10800.0,"choices":2,"job_adds":117.97741233840526,"state":"ok","text":"Bit B · 1 h 12 of 3 h used","used_text":"1 h 12"}},{"o":"r","x":16,"y":108,"w":118,"h":10,"c":"#2C6231","r":3},{"o":"t","x":304,"y":157.5,"t":"done in 1 min","f":"d7","z":18,"c":"#F4F0E8","a":"r","mw":86.0},{"o":"bar","x":6,"y":176,"w":266,"h":14,"r":4,"track":"#36322C","segs":{"$":40},"p":91.43,"plain":"#AAA397","m":"#F4F0E8","g":"#141311","f":"d7","z":11},{"o":"t","x":314,"y":189,"t":"91%","f":"d6","z":17,"c":"#F4F0E8","a":"r","mw":26.0},{"o":"t","x":8,"y":224,"t":"21 min","f":"d6","z":19,"c":"#F4F0E8","a":"l","mw":43.0},{"o":"t","x":113,"y":224,"t":"1 min","f":"d6","z":19,"c":"#F4F0E8","a":"l","mw":35.0},{"o":"t","x":113,"y":236,"t":"done around 6:00 PM","f":"b5","z":10,"c":"#AAA397","a":"l","mw":96,"k":{"in":117.97741233840526,"fmt":"done around %s"}},{"tool":1,"code":"T1","label":"3.175 × 12 mm flat end mill","color":"#D32F2F","text":"#FFFFFF","sticker":"Red","unset":false,"bit":{"label":"B","used":4356.6,"limit":10800.0,"choices":2,"job_adds":53.72951715976106,"state":"ok","text":"Bit B · 1 h 13 of 3 h used","used_text":"1 h 13"}},{"o":"t","x":73.0,"y":94,"t":"Bit B · 1 h 13 of 3 h used","f":"b5","z":12,"c":"#F5D1D1","a":"l","mw":113.0},{"o":"r","x":16,"y":108,"w":117,"h":10,"c":"#2C6231","r":3},{"o":"r","x":16,"y":108,"w":116,"h":10,"c":"#3FB950","r":3},{"o":"t","x":304,"y":156.5,"t":"done in under 1 min","f":"d7","z":14,"c":"#F4F0E8","a":"r","mw":97.0},{"o":"bar","x":6,"y":176,"w":266,"h":14,"r":4,"track":"#36322C","segs":{"$":40},"p":96.1,"plain":"#AAA397","m":"#F4F0E8","g":"#141311","f":"d7","z":11},{"o":"t","x":314,"y":189,"t":"96%","f":"d6","z":17,"c":"#F4F0E8","a":"r","mw":28.0},{"o":"t","x":8,"y":224,"t":"22 min","f":"d6","z":19,"c":"#F4F0E8","a":"l","mw":46.0},{"o":"t","x":113,"y":224,"t":"under 1 min","f":"d6","z":19,"c":"#F4F0E8","a":"l","mw":77.0},{"o":"t","x":113,"y":236,"t":"done around 5:59 PM","f":"b5","z":10,"c":"#AAA397","a":"l","mw":96,"k":{"in":53.72951715976106,"fmt":"done around %s"}},{"tool":1,"code":"T1","label":"3.175 × 12 mm flat end mill","color":"#D32F2F","text":"#FFFFFF","sticker":"Red","unset":false,"bit":{"label":"B","used":4372.5,"limit":10800.0,"choices":2,"job_adds":0.9719705047869138,"state":"ok","text":"Bit B · 1 h 13 of 3 h used","used_text":"1 h 13"}},{"o":"r","x":16,"y":108,"w":116,"h":10,"c":"#2C6231","r":3},{"o":"bar","x":6,"y":176,"w":266,"h":14,"r":4,"track":"#36322C","segs":{"$":40},"p":99.93,"plain":"#AAA397","m":"#F4F0E8","g":"#141311","f":"d7","z":11},{"o":"t","x":314,"y":189,"t":"99%","f":"d6","z":17,"c":"#F4F0E8","a":"r","mw":28.0},{"o":"t","x":113,"y":236,"t":"done around 5:58 PM","f":"b5","z":10,"c":"#AAA397","a":"l","mw":96,"k":{"in":0.9719705047869138,"fmt":"done around %s"}},{"o":"t","x":9,"y":80,"t":"Ready","f":"d7","z":62,"c":"#F4F0E8","a":"l","mw":139.0},{"o":"r","x":6,"y":92,"w":308,"h":58,"c":"#1E1C19","r":8},{"o":"t","x":16,"y":107,"t":"LAST JOB FINISHED","f":"b6","z":9,"c":"#AAA397","a":"l","ls":1,"mw":96.0},{"o":"t","x":16,"y":125,"t":"sample-sign","f":"b6","z":14,"c":"#F4F0E8","a":"l","mw":79.0},{"o":"t","x":16,"y":142,"t":"Took 22 min · ended at 5:58 PM","f":"b5","z":11,"c":"#AAA397","a":"l","mw":288,"k":{"at":1794095909.615285,"fmt":"Took 22 min · ended at %s","tag":"ended"}},{"o":"t","x":10,"y":172,"t":"In Makera Studio, connect to","f":"b5","z":11,"c":"#AAA397","a":"l","mw":138.0},{"o":"t","x":10,"y":189,"t":"Makera_Z1_screen","f":"b6","z":13,"c":"#F4F0E8","a":"l","mw":108.0},{"o":"t","x":10,"y":212,"t":"Bit colors and a practice run","f":"b5","z":11,"c":"#AAA397","a":"l","mw":136.0},{"o":"t","x":10,"y":229,"t":"z1screen.local:8080/settings","f":"b6","z":13,"c":"#F4F0E8","a":"l","mw":167.0},{"tool":3,"code":"T3","label":"60° V-bit, 0.1 mm tip","color":"#1565C0","text":"#FFFFFF","sticker":"Blue","unset":false},{"o":"r","x":0,"y":0,"w":320,"h":240,"c":"#FF5B4F"},{"o":"r","x":6,"y":6,"w":308,"h":228,"c":"#141311"},{"o":"t","x":16,"y":27,"t":"BITCUE","f":"b6","z":10,"c":"#AAA397","a":"l","ls":1,"mw":39.0},{"o":"t","x":16,"y":68,"t":"Machine stopped","f":"d7","z":40,"c":"#FF5B4F","a":"l","mw":245.0},{"o":"t","x":16,"y":95,"t":"Probe not detected:","f":"b6","z":19,"c":"#F4F0E8","a":"l","mw":170.0},{"o":"t","x":16,"y":118,"t":"check the probe cable","f":"b6","z":19,"c":"#F4F0E8","a":"l","mw":186.0},{"o":"t","x":16,"y":143,"t":"Check that the probe is in the spindle and its cable","f":"b5","z":13,"c":"#AAA397","a":"l","mw":287.0},{"o":"t","x":16,"y":160,"t":"is plugged into the side of the head. Then unlock","f":"b5","z":13,"c":"#AAA397","a":"l","mw":275.0},{"o":"t","x":16,"y":177,"t":"the machine in Makera Studio and start the job","f":"b5","z":13,"c":"#AAA397","a":"l","mw":267.0},{"o":"t","x":16,"y":194,"t":"again.","f":"b5","z":13,"c":"#AAA397","a":"l","mw":36.0},{"o":"t","x":16,"y":95,"t":"Stopped by hand","f":"b6","z":19,"c":"#F4F0E8","a":"l","mw":142.0},{"o":"t","x":16,"y":120,"t":"The job was stopped from the front button or from","f":"b5","z":13,"c":"#AAA397","a":"l","mw":289.0},{"o":"t","x":16,"y":137,"t":"Makera Studio. Unlock the machine in Makera","f":"b5","z":13,"c":"#AAA397","a":"l","mw":261.0},{"o":"t","x":16,"y":154,"t":"Studio to carry on.","f":"b5","z":13,"c":"#AAA397","a":"l","mw":107.0}],"frames":[{"k":"ready","est":0.0,"view":{"machine":{"$":0},"relay":{"$":1},"mode":"idle","state":"Idle","state_text":"Idle","job":null,"toolchange":null,"alarm":null,"last_job":null,"legend":[],"settings_url":"http://z1screen.local:8080/settings","touch_request":0},"tft":[{"$":2},{"$":3},{"$":4},{"$":5},{"$":6},{"$":7},{"$":8},{"$":9}]},{"k":"stop","est":0.0,"view":{"machine":{"$":0},"relay":{"$":1},"mode":"toolchange","state":"Tool","state_text":"Waiting for a tool change","job":{"name":"sample-sign","file":"sample-sign.nc","elapsed":0,"known":true,"loading":false,"percent":0.0,"left":1375,"next":{"tool":1,"code":"T1","label":"3.175 × 12 mm flat end mill","color":"#D32F2F","text":"#FFFFFF","sticker":"Red","unset":false,"in":102,"index":1,"total":4,"bit":{"label":"B","used":3960.0000000000005,"limit":10800.0,"choices":2,"job_adds":0,"state":"ok","text":"Bit B · 1 h 06 of 3 h used","used_text":"1 h 06"}},"changes_total":4,"changes_left":4,"segments":{"$":11},"now":{"$":12},"preview":""},"toolchange":{"tool":0,"code":"Probe","label":"Probe","color":"#F5F5F5","text":"#111111","sticker":"White","unset":false,"out":{"tool":1,"code":"T1","label":"3.175 × 12 mm flat end mill","color":"#D32F2F","text":"#FFFFFF","sticker":"Red","unset":false},"then":{"tool":1,"code":"T1","label":"3.175 × 12 mm flat end mill","color":"#D32F2F","text":"#FFFFFF","sticker":"Red","unset":false,"in":102,"index":1}},"alarm":null,"last_job":null,"legend":{"$":10},"settings_url":"http://z1screen.local:8080/settings","touch_request":0},"tft":[{"$":13},{"$":14},{"$":15},{"$":16},{"$":17},{"$":18},{"$":19},{"$":20},{"$":21},{"$":22},{"$":23},{"$":24},{"$":25},{"$":26}]},{"k":"run","est":0.0,"view":{"machine":{"$":0},"relay":{"$":1},"mode":"running","state":"Run","state_text":"Running","job":{"name":"sample-sign","file":"sample-sign.nc","elapsed":0,"known":true,"loading":false,"percent":0.0,"left":1375,"next":{"tool":1,"code":"T1","label":"3.175 × 12 mm flat end mill","color":"#D32F2F","text":"#FFFFFF","sticker":"Red","unset":false,"in":102,"index":1,"total":4,"bit":{"label":"B","used":3960.0000000000005,"limit":10800.0,"choices":2,"job_adds":0,"state":"ok","text":"Bit B · 1 h 06 of 3 h used","used_text":"1 h 06"}},"changes_total":4,"changes_left":4,"segments":{"$":11},"now":{"$":27},"preview":""},"toolchange":null,"alarm":null,"last_job":null,"legend":{"$":10},"settings_url":"http://z1screen.local:8080/settings","touch_request":0},"tft":[{"$":2},{"$":28},{"$":29},{"$":30},{"$":31},{"$":32},{"$":33},{"$":34},{"$":35},{"$":36},{"$":37},{"$":38},{"$":39},{"$":41},{"$":42},{"$":43},{"$":44},{"$":45},{"$":46},{"$":47},{"$":48},{"$":49},{"$":50}]},{"k":"run","est":60.0,"view":{"machine":{"$":0},"relay":{"$":1},"mode":"running","state":"Run","state_text":"Running","job":{"name":"sample-sign","file":"sample-sign.nc","elapsed":60,"known":true,"loading":false,"percent":0.0,"left":1375,"next":{"tool":1,"code":"T1","label":"3.175 × 12 mm flat end mill","color":"#D32F2F","text":"#FFFFFF","sticker":"Red","unset":false,"in":102,"index":1,"total":4,"bit":{"label":"B","used":3960.0000000000005,"limit":10800.0,"choices":2,"job_adds":0,"state":"ok","text":"Bit B · 1 h 06 of 3 h used","used_text":"1 h 06"}},"changes_total":4,"changes_left":4,"segments":{"$":11},"now":{"$":27},"preview":""},"toolchange":null,"alarm":null,"last_job":null,"legend":{"$":10},"settings_url":"http://z1screen.local:8080/settings","touch_request":0},"tft":[{"$":2},{"$":28},{"$":29},{"$":30},{"$":31},{"$":32},{"$":33},{"$":34},{"$":35},{"$":36},{"$":37},{"$":38},{"$":39},{"$":41},{"$":42},{"$":43},{"$":51},{"$":45},{"$":46},{"$":47},{"$":48},{"$":49},{"$":50}]},{"k":"stop","est":102.0,"view":{"machine":{"$":0},"relay":{"$":1},"mode":"toolchange","state":"Tool","state_text":"Waiting for a tool change","job":{"name":"sample-sign","file":"sample-sign.nc","elapsed":102,"known":true,"loading":false,"percent":0.0,"left":1375,"next":{"tool":1,"code":"T1","label":"3.175 × 12 mm flat end mill","color":"#D32F2F","text":"#FFFFFF","sticker":"Red","unset":false,"in":102,"index":1,"total":4,"bit":{"label":"B","used":3960.0000000000005,"limit":10800.0,"choices":2,"job_adds":0,"state":"ok","text":"Bit B · 1 h 06 of 3 h used","used_text":"1 h 06"}},"changes_total":4,"changes_left":4,"segments":{"$":11},"now":{"$":27},"preview":""},"toolchange":{"tool":1,"code":"T1","label":"3.175 × 12 mm flat end mill","color":"#D32F2F","text":"#FFFFFF","sticker":"Red","unset":false,"out":{"tool":0,"code":"Probe","label":"Probe","color":"#F5F5F5","text":"#111111","sticker":"White","unset":false},"index":1,"total":4,"then":{"tool":2,"code":"T2","label":"2 × 8 mm ball end mill","color":"#FFD600","text":"#111111","sticker":"Yellow","unset":false,"in":305,"index":2},"bit":{"label":"B","used":3960.0000000000005,"limit":10800.0,"choices":2,"job_adds":304.8,"state":"ok","text":"Bit B · 1 h 06 of 3 h used","used_text":"1 h 06"}},"alarm":null,"last_job":null,"legend":{"$":10},"settings_url":"http://z1screen.local:8080/settings","touch_request":0},"tft":[{"$":52},{"$":53},{"$":54},{"$":55},{"$":56},{"$":57},{"$":58},{"$":59},{"$":60},{"$":61},{"$":62},{"$":63},{"$":64},{"$":65},{"$":66},{"$":67},{"$":68},{"$":69},{"$":70},{"$":71}]},{"k":"run","est":102.0,"view":{"machine":{"$":0},"relay":{"$":1},"mode":"running","state":"Run","state_text":"Running","job":{"name":"sample-sign","file":"sample-sign.nc","elapsed":102,"known":true,"loading":false,"percent":7.42,"left":1273,"next":{"tool":2,"code":"T2","label":"2 × 8 mm ball end mill","color":"#FFD600","text":"#111111","sticker":"Yellow","unset":false,"in":305,"index":2,"total":4,"bit":{"label":"A","used":8280.0,"limit":10800.0,"choices":3,"job_adds":0,"state":"ok","text":"Bit A · 2 h 18 of 3 h used","used_text":"2 h 18"}},"changes_total":4,"changes_left":3,"segments":{"$":11},"now":{"$":72},"preview":""},"toolchange":null,"alarm":null,"last_job":null,"legend":{"$":10},"settings_url":"http://z1screen.local:8080/settings","touch_request":0},"tft":[{"$":2},{"$":28},{"$":29},{"$":30},{"$":73},{"$":74},{"$":75},{"$":76},{"$":77},{"$":78},{"$":79},{"$":80},{"$":81},{"$":82},{"$":83},{"$":84},{"$":85},{"$":86},{"$":87},{"$":88},{"$":89},{"$":43},{"$":51},{"$":45},{"$":90},{"$":91},{"$":48},{"$":92},{"$":50}]},{"k":"run","est":162.0,"view":{"machine":{"$":0},"relay":{"$":1},"mode":"running","state":"Run","state_text":"Running","job":{"name":"sample-sign","file":"sample-sign.nc","elapsed":162,"known":true,"loading":false,"percent":11.69,"left":1215,"next":{"tool":2,"code":"T2","label":"2 × 8 mm ball end mill","color":"#FFD600","text":"#111111","sticker":"Yellow","unset":false,"in":246,"index":2,"total":4,"bit":{"label":"A","used":8280.0,"limit":10800.0,"choices":3,"job_adds":0,"state":"ok","text":"Bit A · 2 h 18 of 3 h used","used_text":"2 h 18"}},"changes_total":4,"changes_left":3,"segments":{"$":11},"now":{"$":93},"preview":""},"toolchange":null,"alarm":null,"last_job":null,"legend":{"$":10},"settings_url":"http://z1screen.local:8080/settings","touch_request":0},"tft":[{"$":2},{"$":28},{"$":29},{"$":30},{"$":73},{"$":74},{"$":75},{"$":76},{"$":77},{"$":78},{"$":79},{"$":80},{"$":94},{"$":82},{"$":83},{"$":84},{"$":95},{"$":86},{"$":87},{"$":96},{"$":97},{"$":43},{"$":98},{"$":45},{"$":99},{"$":100},{"$":48},{"$":92},{"$":50}]},{"k":"run","est":222.0,"view":{"machine":{"$":0},"relay":{"$":1},"mode":"running","state":"Run","state_text":"Running","job":{"name":"sample-sign","file":"sample-sign.nc","elapsed":222,"known":true,"loading":false,"percent":16.01,"left":1155,"next":{"tool":2,"code":"T2","label":"2 × 8 mm ball end mill","color":"#FFD600","text":"#111111","sticker":"Yellow","unset":false,"in":187,"index":2,"total":4,"bit":{"label":"A","used":8280.0,"limit":10800.0,"choices":3,"job_adds":0,"state":"ok","text":"Bit A · 2 h 18 of 3 h used","used_text":"2 h 18"}},"changes_total":4,"changes_left":3,"segments":{"$":11},"now":{"$":101},"preview":""},"toolchange":null,"alarm":null,"last_job":null,"legend":{"$":10},"settings_url":"http://z1screen.local:8080/settings","touch_request":0},"tft":[{"$":2},{"$":28},{"$":29},{"$":30},{"$":73},{"$":74},{"$":75},{"$":76},{"$":77},{"$":78},{"$":79},{"$":80},{"$":102},{"$":103},{"$":83},{"$":84},{"$":104},{"$":86},{"$":87},{"$":105},{"$":106},{"$":43},{"$":107},{"$":45},{"$":108},{"$":109},{"$":48},{"$":92},{"$":50}]},{"k":"run","est":282.0,"view":{"machine":{"$":0},"relay":{"$":1},"mode":"running","state":"Run","state_text":"Running","job":{"name":"sample-sign","file":"sample-sign.nc","elapsed":282,"known":true,"loading":false,"percent":20.47,"left":1094,"next":{"tool":2,"code":"T2","label":"2 × 8 mm ball end mill","color":"#FFD600","text":"#111111","sticker":"Yellow","unset":false,"in":125,"index":2,"total":4,"bit":{"label":"A","used":8280.0,"limit":10800.0,"choices":3,"job_adds":0,"state":"ok","text":"Bit A · 2 h 18 of 3 h used","used_text":"2 h 18"}},"changes_total":4,"changes_left":3,"segments":{"$":11},"now":{"$":110},"preview":""},"toolchange":null,"alarm":null,"last_job":null,"legend":{"$":10},"settings_url":"http://z1screen.local:8080/settings","touch_request":0},"tft":[{"$":2},{"$":28},{"$":29},{"$":30},{"$":73},{"$":74},{"$":75},{"$":76},{"$":77},{"$":78},{"$":79},{"$":80},{"$":111},{"$":103},{"$":83},{"$":84},{"$":112},{"$":86},{"$":87},{"$":113},{"$":114},{"$":43},{"$":115},{"$":45},{"$":116},{"$":117},{"$":48},{"$":92},{"$":50}]},{"k":"run","est":342.0,"view":{"machine":{"$":0},"relay":{"$":1},"mode":"running","state":"Run","state_text":"Running","job":{"name":"sample-sign","file":"sample-sign.nc","elapsed":342,"known":true,"loading":false,"percent":24.79,"left":1034,"next":{"tool":2,"code":"T2","label":"2 × 8 mm ball end mill","color":"#FFD600","text":"#111111","sticker":"Yellow","unset":false,"in":66,"index":2,"total":4,"bit":{"label":"A","used":8280.0,"limit":10800.0,"choices":3,"job_adds":0,"state":"ok","text":"Bit A · 2 h 18 of 3 h used","used_text":"2 h 18"}},"changes_total":4,"changes_left":3,"segments":{"$":11},"now":{"$":118},"preview":""},"toolchange":null,"alarm":null,"last_job":null,"legend":{"$":10},"settings_url":"http://z1screen.local:8080/settings","touch_request":0},"tft":[{"$":2},{"$":28},{"$":29},{"$":30},{"$":73},{"$":74},{"$":75},{"$":76},{"$":77},{"$":119},{"$":79},{"$":80},{"$":120},{"$":121},{"$":83},{"$":84},{"$":122},{"$":86},{"$":87},{"$":123},{"$":124},{"$":43},{"$":125},{"$":45},{"$":126},{"$":127},{"$":48},{"$":92},{"$":50}]},{"k":"run","est":402.0,"view":{"machine":{"$":0},"relay":{"$":1},"mode":"running","state":"Run","state_text":"Running","job":{"name":"sample-sign","file":"sample-sign.nc","elapsed":402,"known":true,"loading":false,"percent":29.13,"left":975,"next":{"tool":2,"code":"T2","label":"2 × 8 mm ball end mill","color":"#FFD600","text":"#111111","sticker":"Yellow","unset":false,"in":6,"index":2,"total":4,"bit":{"label":"A","used":8280.0,"limit":10800.0,"choices":3,"job_adds":0,"state":"ok","text":"Bit A · 2 h 18 of 3 h used","used_text":"2 h 18"}},"changes_total":4,"changes_left":3,"segments":{"$":11},"now":{"$":128},"preview":""},"toolchange":null,"alarm":null,"last_job":null,"legend":{"$":10},"settings_url":"http://z1screen.local:8080/settings","touch_request":0},"tft":[{"$":2},{"$":28},{"$":29},{"$":30},{"$":73},{"$":74},{"$":75},{"$":76},{"$":77},{"$":119},{"$":79},{"$":80},{"$":129},{"$":121},{"$":83},{"$":84},{"$":130},{"$":86},{"$":131},{"$":132},{"$":133},{"$":43},{"$":134},{"$":45},{"$":135},{"$":136},{"$":48},{"$":92},{"$":50}]},{"k":"stop","est":406.8,"view":{"machine":{"$":0},"relay":{"$":1},"mode":"toolchange","state":"Tool","state_text":"Waiting for a tool change","job":{"name":"sample-sign","file":"sample-sign.nc","elapsed":406,"known":true,"loading":false,"percent":29.24,"left":973,"next":{"tool":2,"code":"T2","label":"2 × 8 mm ball end mill","color":"#FFD600","text":"#111111","sticker":"Yellow","unset":false,"in":5,"index":2,"total":4,"bit":{"label":"A","used":8280.0,"limit":10800.0,"choices":3,"job_adds":0,"state":"ok","text":"Bit A · 2 h 18 of 3 h used","used_text":"2 h 18"}},"changes_total":4,"changes_left":3,"segments":{"$":11},"now":{"$":137},"preview":""},"toolchange":{"tool":2,"code":"T2","label":"2 × 8 mm ball end mill","color":"#FFD600","text":"#111111","sticker":"Yellow","unset":false,"out":{"tool":1,"code":"T1","label":"3.175 × 12 mm flat end mill","color":"#D32F2F","text":"#FFFFFF","sticker":"Red","unset":false},"index":2,"total":4,"then":{"tool":3,"code":"T3","label":"60° V-bit, 0.1 mm tip","color":"#1565C0","text":"#FFFFFF","sticker":"Blue","unset":false,"in":660,"index":3},"bit":{"label":"A","used":8280.0,"limit":10800.0,"choices":3,"job_adds":659.5,"state":"ok","text":"Bit A · 2 h 18 of 3 h used","used_text":"2 h 18"}},"alarm":null,"last_job":null,"legend":{"$":10},"settings_url":"http://z1screen.local:8080/settings","touch_request":0},"tft":[{"$":138},{"$":139},{"$":140},{"$":141},{"$":142},{"$":143},{"$":144},{"$":22},{"$":23},{"$":24},{"$":145},{"$":63},{"$":146},{"$":65},{"$":66},{"$":147},{"$":148},{"$":149},{"$":150}]},{"k":"run","est":406.8,"view":{"machine":{"$":0},"relay":{"$":1},"mode":"running","state":"Run","state_text":"Running","job":{"name":"sample-sign","file":"sample-sign.nc","elapsed":407,"known":true,"loading":false,"percent":29.58,"left":969,"next":{"tool":3,"code":"T3","label":"60° V-bit, 0.1 mm tip","color":"#1565C0","text":"#FFFFFF","sticker":"Blue","unset":false,"in":660,"index":3,"total":4,"bit":{"label":"A","used":1440.0,"limit":7200.0,"choices":2,"job_adds":0,"state":"ok","text":"Bit A · 24 min of 2 h used","used_text":"24 min"}},"changes_total":4,"changes_left":2,"segments":{"$":11},"now":{"$":151},"preview":""},"toolchange":null,"alarm":null,"last_job":null,"legend":{"$":10},"settings_url":"http://z1screen.local:8080/settings","touch_request":0},"tft":[{"$":2},{"$":28},{"$":29},{"$":30},{"$":152},{"$":153},{"$":154},{"$":155},{"$":156},{"$":157},{"$":79},{"$":80},{"$":158},{"$":159},{"$":160},{"$":161},{"$":162},{"$":163},{"$":164},{"$":165},{"$":133},{"$":43},{"$":134},{"$":45},{"$":135},{"$":166},{"$":48},{"$":167},{"$":50}]},{"k":"run","est":466.8,"view":{"machine":{"$":0},"relay":{"$":1},"mode":"running","state":"Run","state_text":"Running","job":{"name":"sample-sign","file":"sample-sign.nc","elapsed":467,"known":true,"loading":false,"percent":33.85,"left":910,"next":{"tool":3,"code":"T3","label":"60° V-bit, 0.1 mm tip","color":"#1565C0","text":"#FFFFFF","sticker":"Blue","unset":false,"in":601,"index":3,"total":4,"bit":{"label":"A","used":1440.0,"limit":7200.0,"choices":2,"job_adds":0,"state":"ok","text":"Bit A · 24 min of 2 h used","used_text":"24 min"}},"changes_total":4,"changes_left":2,"segments":{"$":11},"now":{"$":168},"preview":""},"toolchange":null,"alarm":null,"last_job":null,"legend":{"$":10},"settings_url":"http://z1screen.local:8080/settings","touch_request":0},"tft":[{"$":2},{"$":28},{"$":29},{"$":30},{"$":152},{"$":153},{"$":154},{"$":155},{"$":156},{"$":157},{"$":79},{"$":80},{"$":169},{"$":170},{"$":160},{"$":161},{"$":171},{"$":163},{"$":164},{"$":172},{"$":173},{"$":43},{"$":174},{"$":45},{"$":175},{"$":176},{"$":48},{"$":167},{"$":50}]},{"k":"run","est":526.8,"view":{"machine":{"$":0},"relay":{"$":1},"mode":"running","state":"Run","state_text":"Running","job":{"name":"sample-sign","file":"sample-sign.nc","elapsed":527,"known":true,"loading":false,"percent":38.3,"left":849,"next":{"tool":3,"code":"T3","label":"60° V-bit, 0.1 mm tip","color":"#1565C0","text":"#FFFFFF","sticker":"Blue","unset":false,"in":540,"index":3,"total":4,"bit":{"label":"A","used":1440.0,"limit":7200.0,"choices":2,"job_adds":0,"state":"ok","text":"Bit A · 24 min of 2 h used","used_text":"24 min"}},"changes_total":4,"changes_left":2,"segments":{"$":11},"now":{"$":177},"preview":""},"toolchange":null,"alarm":null,"last_job":null,"legend":{"$":10},"settings_url":"http://z1screen.local:8080/settings","touch_request":0},"tft":[{"$":2},{"$":28},{"$":29},{"$":30},{"$":152},{"$":153},{"$":154},{"$":155},{"$":156},{"$":178},{"$":79},{"$":80},{"$":179},{"$":180},{"$":160},{"$":161},{"$":181},{"$":163},{"$":164},{"$":182},{"$":183},{"$":43},{"$":184},{"$":45},{"$":185},{"$":186},{"$":48},{"$":167},{"$":50}]},{"k":"run","est":586.8,"view":{"machine":{"$":0},"relay":{"$":1},"mode":"running","state":"Run","state_text":"Running","job":{"name":"sample-sign","file":"sample-sign.nc","elapsed":587,"known":true,"loading":false,"percent":42.66,"left":789,"next":{"tool":3,"code":"T3","label":"60° V-bit, 0.1 mm tip","color":"#1565C0","text":"#FFFFFF","sticker":"Blue","unset":false,"in":480,"index":3,"total":4,"bit":{"label":"A","used":1440.0,"limit":7200.0,"choices":2,"job_adds":0,"state":"ok","text":"Bit A · 24 min of 2 h used","used_text":"24 min"}},"changes_total":4,"changes_left":2,"segments":{"$":11},"now":{"$":187},"preview":""},"toolchange":null,"alarm":null,"last_job":null,"legend":{"$":10},"settings_url":"http://z1screen.local:8080/settings","touch_request":0},"tft":[{"$":2},{"$":28},{"$":29},{"$":30},{"$":152},{"$":153},{"$":154},{"$":155},{"$":156},{"$":178},{"$":79},{"$":80},{"$":188},{"$":189},{"$":160},{"$":161},{"$":190},{"$":163},{"$":164},{"$":191},{"$":192},{"$":43},{"$":193},{"$":45},{"$":194},{"$":195},{"$":48},{"$":167},{"$":50}]},{"k":"run","est":646.8,"view":{"machine":{"$":0},"relay":{"$":1},"mode":"running","state":"Run","state_text":"Running","job":{"name":"sample-sign","file":"sample-sign.nc","elapsed":647,"known":true,"loading":false,"percent":47.03,"left":729,"next":{"tool":3,"code":"T3","label":"60° V-bit, 0.1 mm tip","color":"#1565C0","text":"#FFFFFF","sticker":"Blue","unset":false,"in":420,"index":3,"total":4,"bit":{"label":"A","used":1440.0,"limit":7200.0,"choices":2,"job_adds":0,"state":"ok","text":"Bit A · 24 min of 2 h used","used_text":"24 min"}},"changes_total":4,"changes_left":2,"segments":{"$":11},"now":{"$":196},"preview":""},"toolchange":null,"alarm":null,"last_job":null,"legend":{"$":10},"settings_url":"http://z1screen.local:8080/settings","touch_request":0},"tft":[{"$":2},{"$":28},{"$":29},{"$":30},{"$":152},{"$":153},{"$":154},{"$":155},{"$":156},{"$":178},{"$":79},{"$":80},{"$":197},{"$":198},{"$":160},{"$":161},{"$":199},{"$":163},{"$":164},{"$":200},{"$":201},{"$":43},{"$":202},{"$":45},{"$":203},{"$":204},{"$":48},{"$":167},{"$":50}]},{"k":"run","est":706.8,"view":{"machine":{"$":0},"relay":{"$":1},"mode":"running","state":"Run","state_text":"Running","job":{"name":"sample-sign","file":"sample-sign.nc","elapsed":707,"known":true,"loading":false,"percent":51.39,"left":669,"next":{"tool":3,"code":"T3","label":"60° V-bit, 0.1 mm tip","color":"#1565C0","text":"#FFFFFF","sticker":"Blue","unset":false,"in":360,"index":3,"total":4,"bit":{"label":"A","used":1440.0,"limit":7200.0,"choices":2,"job_adds":0,"state":"ok","text":"Bit A · 24 min of 2 h used","used_text":"24 min"}},"changes_total":4,"changes_left":2,"segments":{"$":11},"now":{"$":205},"preview":""},"toolchange":null,"alarm":null,"last_job":null,"legend":{"$":10},"settings_url":"http://z1screen.local:8080/settings","touch_request":0},"tft":[{"$":2},{"$":28},{"$":29},{"$":30},{"$":152},{"$":153},{"$":154},{"$":155},{"$":156},{"$":206},{"$":79},{"$":80},{"$":207},{"$":208},{"$":160},{"$":161},{"$":209},{"$":163},{"$":164},{"$":210},{"$":211},{"$":43},{"$":212},{"$":45},{"$":213},{"$":214},{"$":48},{"$":167},{"$":50}]},{"k":"run","est":766.8,"view":{"machine":{"$":0},"relay":{"$":1},"mode":"running","state":"Run","state_text":"Running","job":{"name":"sample-sign","file":"sample-sign.nc","elapsed":767,"known":true,"loading":false,"percent":55.75,"left":609,"next":{"tool":3,"code":"T3","label":"60° V-bit, 0.1 mm tip","color":"#1565C0","text":"#FFFFFF","sticker":"Blue","unset":false,"in":300,"index":3,"total":4,"bit":{"label":"A","used":1440.0,"limit":7200.0,"choices":2,"job_adds":0,"state":"ok","text":"Bit A · 24 min of 2 h used","used_text":"24 min"}},"changes_total":4,"changes_left":2,"segments":{"$":11},"now":{"$":215},"preview":""},"toolchange":null,"alarm":null,"last_job":null,"legend":{"$":10},"settings_url":"http://z1screen.local:8080/settings","touch_request":0},"tft":[{"$":2},{"$":28},{"$":29},{"$":30},{"$":152},{"$":153},{"$":154},{"$":155},{"$":156},{"$":206},{"$":79},{"$":80},{"$":216},{"$":217},{"$":160},{"$":161},{"$":218},{"$":163},{"$":164},{"$":219},{"$":220},{"$":43},{"$":221},{"$":45},{"$":222},{"$":223},{"$":48},{"$":167},{"$":50}]},{"k":"run","est":826.8,"view":{"machine":{"$":0},"relay":{"$":1},"mode":"running","state":"Run","state_text":"Running","job":{"name":"sample-sign","file":"sample-sign.nc","elapsed":827,"known":true,"loading":false,"percent":60.11,"left":548,"next":{"tool":3,"code":"T3","label":"60° V-bit, 0.1 mm tip","color":"#1565C0","text":"#FFFFFF","sticker":"Blue","unset":false,"in":239,"index":3,"total":4,"bit":{"label":"A","used":1440.0,"limit":7200.0,"choices":2,"job_adds":0,"state":"ok","text":"Bit A · 24 min of 2 h used","used_text":"24 min"}},"changes_total":4,"changes_left":2,"segments":{"$":11},"now":{"$":224},"preview":""},"toolchange":null,"alarm":null,"last_job":null,"legend":{"$":10},"settings_url":"http://z1screen.local:8080/settings","touch_request":0},"tft":[{"$":2},{"$":28},{"$":29},{"$":30},{"$":152},{"$":153},{"$":154},{"$":155},{"$":156},{"$":206},{"$":79},{"$":80},{"$":225},{"$":226},{"$":160},{"$":161},{"$":227},{"$":163},{"$":164},{"$":228},{"$":229},{"$":43},{"$":230},{"$":45},{"$":231},{"$":232},{"$":48},{"$":167},{"$":50}]},{"k":"run","est":886.8,"view":{"machine":{"$":0},"relay":{"$":1},"mode":"running","state":"Run","state_text":"Running","job":{"name":"sample-sign","file":"sample-sign.nc","elapsed":887,"known":true,"loading":false,"percent":64.48,"left":488,"next":{"tool":3,"code":"T3","label":"60° V-bit, 0.1 mm tip","color":"#1565C0","text":"#FFFFFF","sticker":"Blue","unset":false,"in":179,"index":3,"total":4,"bit":{"label":"A","used":1440.0,"limit":7200.0,"choices":2,"job_adds":0,"state":"ok","text":"Bit A · 24 min of 2 h used","used_text":"24 min"}},"changes_total":4,"changes_left":2,"segments":{"$":11},"now":{"$":233},"preview":""},"toolchange":null,"alarm":null,"last_job":null,"legend":{"$":10},"settings_url":"http://z1screen.local:8080/settings","touch_request":0},"tft":[{"$":2},{"$":28},{"$":29},{"$":30},{"$":152},{"$":153},{"$":154},{"$":155},{"$":156},{"$":206},{"$":79},{"$":80},{"$":234},{"$":235},{"$":160},{"$":161},{"$":236},{"$":163},{"$":164},{"$":237},{"$":238},{"$":43},{"$":239},{"$":45},{"$":240},{"$":241},{"$":48},{"$":167},{"$":50}]},{"k":"run","est":946.8,"view":{"machine":{"$":0},"relay":{"$":1},"mode":"running","state":"Run","state_text":"Running","job":{"name":"sample-sign","file":"sample-sign.nc","elapsed":947,"known":true,"loading":false,"percent":68.84,"left":428,"next":{"tool":3,"code":"T3","label":"60° V-bit, 0.1 mm tip","color":"#1565C0","text":"#FFFFFF","sticker":"Blue","unset":false,"in":119,"index":3,"total":4,"bit":{"label":"A","used":1440.0,"limit":7200.0,"choices":2,"job_adds":0,"state":"ok","text":"Bit A · 24 min of 2 h used","used_text":"24 min"}},"changes_total":4,"changes_left":2,"segments":{"$":11},"now":{"$":242},"preview":""},"toolchange":null,"alarm":null,"last_job":null,"legend":{"$":10},"settings_url":"http://z1screen.local:8080/settings","touch_request":0},"tft":[{"$":2},{"$":28},{"$":29},{"$":30},{"$":152},{"$":153},{"$":154},{"$":155},{"$":156},{"$":243},{"$":79},{"$":80},{"$":244},{"$":245},{"$":160},{"$":161},{"$":37},{"$":163},{"$":164},{"$":246},{"$":247},{"$":43},{"$":248},{"$":45},{"$":249},{"$":250},{"$":48},{"$":167},{"$":50}]},{"k":"run","est":1006.8,"view":{"machine":{"$":0},"relay":{"$":1},"mode":"running","state":"Run","state_text":"Running","job":{"name":"sample-sign","file":"sample-sign.nc","elapsed":1007,"known":true,"loading":false,"percent":73.2,"left":368,"next":{"tool":3,"code":"T3","label":"60° V-bit, 0.1 mm tip","color":"#1565C0","text":"#FFFFFF","sticker":"Blue","unset":false,"in":59,"index":3,"total":4,"bit":{"label":"A","used":1440.0,"limit":7200.0,"choices":2,"job_adds":0,"state":"ok","text":"Bit A · 24 min of 2 h used","used_text":"24 min"}},"changes_total":4,"changes_left":2,"segments":{"$":11},"now":{"$":251},"preview":""},"toolchange":null,"alarm":null,"last_job":null,"legend":{"$":10},"settings_url":"http://z1screen.local:8080/settings","touch_request":0},"tft":[{"$":2},{"$":28},{"$":29},{"$":30},{"$":152},{"$":153},{"$":154},{"$":155},{"$":156},{"$":243},{"$":79},{"$":80},{"$":252},{"$":253},{"$":160},{"$":161},{"$":254},{"$":163},{"$":255},{"$":256},{"$":257},{"$":43},{"$":258},{"$":45},{"$":259},{"$":260},{"$":48},{"$":167},{"$":50}]},{"k":"stop","est":1066.3,"view":{"machine":{"$":0},"relay":{"$":1},"mode":"toolchange","state":"Tool","state_text":"Waiting for a tool change","job":{"name":"sample-sign","file":"sample-sign.nc","elapsed":1066,"known":true,"loading":false,"percent":77.51,"left":309,"next":{"tool":3,"code":"T3","label":"60° V-bit, 0.1 mm tip","color":"#1565C0","text":"#FFFFFF","sticker":"Blue","unset":false,"in":0,"index":3,"total":4,"bit":{"label":"A","used":1440.0,"limit":7200.0,"choices":2,"job_adds":0,"state":"ok","text":"Bit A · 24 min of 2 h used","used_text":"24 min"}},"changes_total":4,"changes_left":2,"segments":{"$":11},"now":{"$":261},"preview":""},"toolchange":{"tool":3,"code":"T3","label":"60° V-bit, 0.1 mm tip","color":"#1565C0","text":"#FFFFFF","sticker":"Blue","unset":false,"out":{"tool":2,"code":"T2","label":"2 × 8 mm ball end mill","color":"#FFD600","text":"#111111","sticker":"Yellow","unset":false},"index":3,"total":4,"then":{"tool":1,"code":"T1","label":"3.175 × 12 mm flat end mill","color":"#D32F2F","text":"#FFFFFF","sticker":"Red","unset":false,"in":136,"index":4},"bit":{"label":"A","used":1440.0,"limit":7200.0,"choices":2,"job_adds":135.53662380042988,"state":"ok","text":"Bit A · 24 min of 2 h used","used_text":"24 min"}},"alarm":null,"last_job":null,"legend":{"$":10},"settings_url":"http://z1screen.local:8080/settings","touch_request":0},"tft":[{"$":262},{"$":263},{"$":264},{"$":265},{"$":266},{"$":57},{"$":267},{"$":268},{"$":269},{"$":270},{"$":271},{"$":63},{"$":272},{"$":65},{"$":66},{"$":273},{"$":274},{"$":275},{"$":276}]},{"k":"run","est":1066.3,"view":{"machine":{"$":0},"relay":{"$":1},"mode":"running","state":"Run","state_text":"Running","job":{"name":"sample-sign","file":"sample-sign.nc","elapsed":1066,"known":true,"loading":false,"percent":77.53,"left":309,"next":{"tool":1,"code":"T1","label":"3.175 × 12 mm flat end mill","color":"#D32F2F","text":"#FFFFFF","sticker":"Red","unset":false,"in":136,"index":4,"total":4,"bit":{"label":"B","used":3960.0000000000005,"limit":10800.0,"choices":2,"job_adds":0,"state":"ok","text":"Bit B · 1 h 06 of 3 h used","used_text":"1 h 06"}},"changes_total":4,"changes_left":1,"segments":{"$":11},"now":{"$":277},"preview":""},"toolchange":null,"alarm":null,"last_job":null,"legend":{"$":10},"settings_url":"http://z1screen.local:8080/settings","touch_request":0},"tft":[{"$":2},{"$":28},{"$":29},{"$":30},{"$":278},{"$":279},{"$":280},{"$":281},{"$":282},{"$":283},{"$":79},{"$":80},{"$":284},{"$":285},{"$":35},{"$":36},{"$":236},{"$":38},{"$":39},{"$":286},{"$":287},{"$":43},{"$":288},{"$":45},{"$":289},{"$":290},{"$":48},{"$":291},{"$":50}]},{"k":"run","est":1126.3,"view":{"machine":{"$":0},"relay":{"$":1},"mode":"running","state":"Run","state_text":"Running","job":{"name":"sample-sign","file":"sample-sign.nc","elapsed":1126,"known":true,"loading":false,"percent":81.83,"left":250,"next":{"tool":1,"code":"T1","label":"3.175 × 12 mm flat end mill","color":"#D32F2F","text":"#FFFFFF","sticker":"Red","unset":false,"in":76,"index":4,"total":4,"bit":{"label":"B","used":3960.0000000000005,"limit":10800.0,"choices":2,"job_adds":0,"state":"ok","text":"Bit B · 1 h 06 of 3 h used","used_text":"1 h 06"}},"changes_total":4,"changes_left":1,"segments":{"$":11},"now":{"$":292},"preview":""},"toolchange":null,"alarm":null,"last_job":null,"legend":{"$":10},"settings_url":"http://z1screen.local:8080/settings","touch_request":0},"tft":[{"$":2},{"$":28},{"$":29},{"$":30},{"$":278},{"$":279},{"$":280},{"$":281},{"$":282},{"$":293},{"$":79},{"$":80},{"$":294},{"$":295},{"$":35},{"$":36},{"$":37},{"$":38},{"$":39},{"$":296},{"$":297},{"$":43},{"$":298},{"$":45},{"$":299},{"$":300},{"$":48},{"$":291},{"$":50}]},{"k":"run","est":1186.3,"view":{"machine":{"$":0},"relay":{"$":1},"mode":"running","state":"Run","state_text":"Running","job":{"name":"sample-sign","file":"sample-sign.nc","elapsed":1186,"known":true,"loading":false,"percent":86.23,"left":189,"next":{"tool":1,"code":"T1","label":"3.175 × 12 mm flat end mill","color":"#D32F2F","text":"#FFFFFF","sticker":"Red","unset":false,"in":16,"index":4,"total":4,"bit":{"label":"B","used":3960.0000000000005,"limit":10800.0,"choices":2,"job_adds":0,"state":"ok","text":"Bit B · 1 h 06 of 3 h used","used_text":"1 h 06"}},"changes_total":4,"changes_left":1,"segments":{"$":11},"now":{"$":301},"preview":""},"toolchange":null,"alarm":null,"last_job":null,"legend":{"$":10},"settings_url":"http://z1screen.local:8080/settings","touch_request":0},"tft":[{"$":2},{"$":28},{"$":29},{"$":30},{"$":278},{"$":279},{"$":280},{"$":281},{"$":282},{"$":293},{"$":79},{"$":80},{"$":302},{"$":295},{"$":35},{"$":36},{"$":254},{"$":38},{"$":303},{"$":304},{"$":305},{"$":43},{"$":306},{"$":45},{"$":307},{"$":308},{"$":48},{"$":291},{"$":50}]},{"k":"stop","est":1202.0,"view":{"machine":{"$":0},"relay":{"$":1},"mode":"toolchange","state":"Tool","state_text":"Waiting for a tool change","job":{"name":"sample-sign","file":"sample-sign.nc","elapsed":1202,"known":true,"loading":false,"percent":87.29,"left":175,"next":{"tool":1,"code":"T1","label":"3.175 × 12 mm flat end mill","color":"#D32F2F","text":"#FFFFFF","sticker":"Red","unset":false,"in":1,"index":4,"total":4,"bit":{"label":"B","used":3960.0000000000005,"limit":10800.0,"choices":2,"job_adds":0,"state":"ok","text":"Bit B · 1 h 06 of 3 h used","used_text":"1 h 06"}},"changes_total":4,"changes_left":1,"segments":{"$":11},"now":{"$":309},"preview":""},"toolchange":{"tool":1,"code":"T1","label":"3.175 × 12 mm flat end mill","color":"#D32F2F","text":"#FFFFFF","sticker":"Red","unset":false,"out":{"tool":3,"code":"T3","label":"60° V-bit, 0.1 mm tip","color":"#1565C0","text":"#FFFFFF","sticker":"Blue","unset":false},"index":4,"total":4,"bit":{"label":"B","used":3960.0000000000005,"limit":10800.0,"choices":2,"job_adds":0,"state":"ok","text":"Bit B · 1 h 06 of 3 h used","used_text":"1 h 06"}},"alarm":null,"last_job":null,"legend":{"$":10},"settings_url":"http://z1screen.local:8080/settings","touch_request":0},"tft":[{"$":52},{"$":310},{"$":54},{"$":55},{"$":311},{"$":57},{"$":58},{"$":312},{"$":313},{"$":314},{"$":62},{"$":63},{"$":64},{"$":65},{"$":66},{"$":68},{"$":69},{"$":70},{"$":71}]},{"k":"run","est":1202.0,"view":{"machine":{"$":0},"relay":{"$":1},"mode":"running","state":"Run","state_text":"Running","job":{"name":"sample-sign","file":"sample-sign.nc","elapsed":1202,"known":true,"loading":false,"percent":87.39,"left":173,"next":null,"changes_total":4,"changes_left":0,"segments":{"$":11},"now":{"$":315},"preview":""},"toolchange":null,"alarm":null,"last_job":null,"legend":{"$":10},"settings_url":"http://z1screen.local:8080/settings","touch_request":0},"tft":[{"$":2},{"$":28},{"$":29},{"$":30},{"$":73},{"$":74},{"$":75},{"$":76},{"$":77},{"$":316},{"$":79},{"$":80},{"$":317},{"$":318},{"$":319},{"$":320},{"$":321},{"$":322},{"$":323},{"$":324},{"$":325},{"$":43},{"$":326},{"$":45},{"$":327},{"$":328},{"$":48},{"$":329},{"$":50}]},{"k":"run","est":1262.0,"view":{"machine":{"$":0},"relay":{"$":1},"mode":"running","state":"Run","state_text":"Running","job":{"name":"sample-sign","file":"sample-sign.nc","elapsed":1262,"known":true,"loading":false,"percent":91.43,"left":118,"next":null,"changes_total":4,"changes_left":0,"segments":{"$":11},"now":{"$":330},"preview":""},"toolchange":null,"alarm":null,"last_job":null,"legend":{"$":10},"settings_url":"http://z1screen.local:8080/settings","touch_request":0},"tft":[{"$":2},{"$":28},{"$":29},{"$":30},{"$":73},{"$":74},{"$":75},{"$":76},{"$":77},{"$":316},{"$":79},{"$":80},{"$":331},{"$":318},{"$":319},{"$":320},{"$":321},{"$":332},{"$":323},{"$":333},{"$":334},{"$":43},{"$":335},{"$":45},{"$":336},{"$":337},{"$":48},{"$":329},{"$":50}]},{"k":"run","est":1322.0,"view":{"machine":{"$":0},"relay":{"$":1},"mode":"running","state":"Run","state_text":"Running","job":{"name":"sample-sign","file":"sample-sign.nc","elapsed":1322,"known":true,"loading":false,"percent":96.1,"left":54,"next":null,"changes_total":4,"changes_left":0,"segments":{"$":11},"now":{"$":338},"preview":""},"toolchange":null,"alarm":null,"last_job":null,"legend":{"$":10},"settings_url":"http://z1screen.local:8080/settings","touch_request":0},"tft":[{"$":2},{"$":28},{"$":29},{"$":30},{"$":73},{"$":74},{"$":75},{"$":76},{"$":77},{"$":339},{"$":79},{"$":80},{"$":340},{"$":341},{"$":319},{"$":320},{"$":321},{"$":342},{"$":323},{"$":343},{"$":344},{"$":43},{"$":345},{"$":45},{"$":346},{"$":347},{"$":48},{"$":329},{"$":50}]},{"k":"run","est":1375.4,"view":{"machine":{"$":0},"relay":{"$":1},"mode":"running","state":"Run","state_text":"Running","job":{"name":"sample-sign","file":"sample-sign.nc","elapsed":1375,"known":true,"loading":false,"percent":99.93,"left":1,"next":null,"changes_total":4,"changes_left":0,"segments":{"$":11},"now":{"$":348},"preview":""},"toolchange":null,"alarm":null,"last_job":null,"legend":{"$":10},"settings_url":"http://z1screen.local:8080/settings","touch_request":0},"tft":[{"$":2},{"$":28},{"$":29},{"$":30},{"$":73},{"$":74},{"$":75},{"$":76},{"$":77},{"$":339},{"$":79},{"$":80},{"$":349},{"$":341},{"$":319},{"$":320},{"$":321},{"$":342},{"$":323},{"$":350},{"$":351},{"$":43},{"$":345},{"$":45},{"$":346},{"$":352},{"$":48},{"$":329},{"$":50}]},{"k":"done","est":1375.4,"view":{"machine":{"$":0},"relay":{"$":1},"mode":"idle","state":"Idle","state_text":"Idle","job":null,"toolchange":null,"alarm":null,"last_job":{"name":"sample-sign","done":true,"elapsed":1375,"ended":1794095909.615285,"reason":"","tools":[{"tool":1,"code":"T1","label":"3.175 × 12 mm flat end mill","color":"#D32F2F","text":"#FFFFFF","sticker":"Red","unset":false},{"tool":2,"code":"T2","label":"2 × 8 mm ball end mill","color":"#FFD600","text":"#111111","sticker":"Yellow","unset":false},{"tool":3,"code":"T3","label":"60° V-bit, 0.1 mm tip","color":"#1565C0","text":"#FFFFFF","sticker":"Blue","unset":false}],"preview":""},"legend":[],"settings_url":"http://z1screen.local:8080/settings","touch_request":0},"tft":[{"$":2},{"$":3},{"$":4},{"$":353},{"$":354},{"$":355},{"$":356},{"$":357},{"$":358},{"$":359},{"$":360},{"$":361}]}],"extras":{"probe":{"machine":{"$":0},"relay":{"$":1},"mode":"alarm","state":"Alarm","state_text":"Stopped","job":{"name":"sample-sign","file":"sample-sign.nc","elapsed":0,"known":true,"loading":false,"percent":0.0,"left":1375,"next":{"tool":1,"code":"T1","label":"3.175 × 12 mm flat end mill","color":"#D32F2F","text":"#FFFFFF","sticker":"Red","unset":false,"in":102,"index":1,"total":4},"changes_total":4,"changes_left":4,"segments":{"$":11},"now":{"$":27},"preview":""},"toolchange":null,"alarm":"Probe not detected: check the probe cable","last_job":null,"legend":{"$":10},"settings_url":"http://z1screen.local:8080/settings","touch_request":0},"hand":{"machine":{"$":0},"relay":{"$":1},"mode":"alarm","state":"Alarm","state_text":"Stopped","job":{"name":"sample-sign","file":"sample-sign.nc","elapsed":1375,"known":true,"loading":false,"percent":99.93,"left":1,"next":null,"changes_total":4,"changes_left":0,"segments":{"$":11},"now":{"$":362},"preview":""},"toolchange":null,"alarm":"Stopped by hand","last_job":null,"legend":{"$":10},"settings_url":"http://z1screen.local:8080/settings","touch_request":0}},"extras_tft":{"probe":[{"$":363},{"$":364},{"$":365},{"$":366},{"$":367},{"$":368},{"$":369},{"$":370},{"$":371},{"$":372}],"hand":[{"$":363},{"$":364},{"$":365},{"$":366},{"$":373},{"$":374},{"$":375},{"$":376}]},"total":1375.4,"name":"sample-sign","relay":"Makera_Z1_screen","title":"Sample sign (made-up demo job)","fonts":{"d7":["Barlow Condensed",700],"d6":["Barlow Condensed",600],"d5":["Barlow Condensed",500],"b7":["Barlow",700],"b6":["Barlow",600],"b5":["Barlow",500],"b4":["Barlow",400]}};
+</script>
+
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var views = ["run", "change", "alarm", "idle", "msg"];
+  var last = null;
+  var lastAt = 0;
+
+  function show(id) {
+    views.forEach(function (v) { $(v).hidden = v !== id; });
+  }
+  function dur(s) {
+    if (s === null || s === undefined || isNaN(s)) return "-";
+    s = Math.max(0, Math.round(s));
+    if (s < 60) return "under 1 min";
+    var h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+    if (h === 0) return m + " min";
+    return h + " h " + (m < 10 ? "0" : "") + m + " min";
+  }
+  // The demo plays faster than real time and sends its own time of day.
+  function nowMs() { return last && last.clock ? last.clock * 1000 : Date.now(); }
+  function clock(s) {
+    if (s === null || s === undefined || isNaN(s)) return "";
+    var d = new Date(nowMs() + s * 1000);
+    try { return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }); }
+    catch (e) { return d.getHours() + ":" + String(d.getMinutes()).padStart(2, "0"); }
+  }
+  function setColor(el, info) {
+    el.style.setProperty("--c", info ? info.color : "#555");
+    el.style.setProperty("--t", info ? info.text : "#fff");
+    el.classList.toggle("unset", !!(info && info.unset));
+  }
+  function stickerText(info) {
+    if (!info) return "";
+    if (info.unset) return "No sticker color set";
+    return info.sticker ? info.sticker + " sticker" : "";
+  }
+  function shortUrl(u) { return (u || "").replace(/^https?:\/\//, ""); }
+  // what the box for the bit coming out says (the small screen's longest wording)
+  function outWords(o) {
+    var code = o.tool === 0 ? "Probe" : o.code;
+    if (o.tool === 0 || o.tool === 8888 || o.tool === 9999) return code + " out";
+    if (o.unset || !o.sticker) return code + " out, no color set";
+    return code + " back in " + o.sticker;
+  }
+  function codeText(info) {
+    if (!info) return "-";
+    return info.tool === 0 ? "Probe" : info.code;
+  }
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+
+  function setPart(img, md5) {
+    var src = md5 ? "preview/" + md5 + ".png" : "";
+    if (img.getAttribute("src") !== src) { if (src) img.src = src; else img.removeAttribute("src"); }
+    img.hidden = !md5;
+  }
+
+  function renderRun(v) {
+    var j = v.job;
+    $("jobName").textContent = j.name || "Job";
+    setPart($("jobPic"), j.preview);
+    var bw = $("jobBitWarn");
+    bw.hidden = !(j.bit_warnings && j.bit_warnings.length);
+    bw.textContent = bw.hidden ? "" : j.bit_warnings.join(" ");
+    var pill = $("pill");
+    pill.dataset.s = v.mode === "paused" ? "paused" : "run";
+    $("pillText").textContent = v.mode === "paused" ? "Paused" : "Running";
+
+    // the big card: the bit cutting now, in its color, with its bit and how long that bit has cut
+    var cur = j.now, cut = $("cut"), b = cur && cur.bit;
+    var probe = !!cur && cur.tool === 0;
+    cut.classList.toggle("none", !cur);
+    setColor(cut, cur || null);
+    $("cutHead").textContent = probe ? "Probing" : v.mode === "paused" ? "Paused with" : "Cutting now";
+    $("cutBitLabel").textContent = b ? "Bit " + b.label : "";
+    $("cutCode").textContent = cur ? codeText(cur) : "";
+    $("cutCode").hidden = !cur;
+    $("cutName").textContent = !cur ? "The Z1 hasn't said which bit is in" : probe ? "Wired probe" : (cur.label || "");
+    $("cutSub").textContent = cur && cur.unset ? stickerText(cur) : b ?
+      "Bit " + b.label + " · " + b.used_text + (b.limit ? " of " + hm(b.limit) : "") + " used" : "";
+    var g = $("cutGauge");
+    g.hidden = !(b && b.limit);
+    if (b && b.limit) {
+      var used = b.used / b.limit, then = (b.used + (b.job_adds || 0)) / b.limit;
+      $("cutUsed").style.width = Math.max(2, Math.min(100, 100 * used)) + "%";
+      $("cutUsed").style.background = lifeColor(used);
+      $("cutThen").style.width = used < 1 ? Math.min(100, 100 * then) + "%" : "0";
+      $("cutThen").style.background = lifeColor(then);
+      $("cutThen").style.opacity = ".45";
+    }
+
+    // the strip: the next bit, in its color, and when its stop comes
+    var nx = j.next, strip = $("next");
+    strip.classList.toggle("none", !nx);
+    setColor(strip, nx || null);
+    $("nextCount").textContent = nx && nx.index && nx.total ? "Tool change " + nx.index + " of " + nx.total : "";
+    if (nx) {
+      $("nextWord").textContent = "Next";
+      $("nextCode").textContent = codeText(nx);
+      $("nextName").textContent = (nx.label || "") + (nx.unset ? " · no color set" : nx.bit ? " · bit " + nx.bit.label : "");
+      $("nextIn").textContent = "in " + dur(nx.in);
+      $("nextAt").textContent = nx.in !== null && nx.in !== undefined ? "around " + clock(nx.in) : "";
+    } else if (j.known) {
+      $("nextWord").textContent = "Last bit";
+      $("nextCode").textContent = "";
+      $("nextName").textContent = "No more tool changes";
+      $("nextIn").textContent = "done in " + dur(j.left);
+      $("nextAt").textContent = j.left !== null && j.left !== undefined ? "around " + clock(j.left) : "";
+    } else {
+      $("nextWord").textContent = "";
+      $("nextCode").textContent = "";
+      $("nextName").textContent = j.loading ? "Reading the job file. One moment." :
+        "Next bit not known for this file. Press Select on it in Makera Studio once.";
+      $("nextIn").textContent = "";
+      $("nextAt").textContent = "";
+    }
+
+    $("elapsed").textContent = dur(j.elapsed);
+    $("left").textContent = dur(j.left);
+    $("leftSub").textContent = j.left !== null && j.left !== undefined ? "done around " + clock(j.left) : "";
+    if (j.known) {
+      $("changesLeft").textContent = String(j.changes_left);
+      $("changesSub").textContent = "of " + j.changes_total + " in this job";
+    } else {
+      $("changesLeft").textContent = "-";
+      $("changesSub").textContent = "";
+    }
+
+    var pct = Math.max(0, Math.min(100, j.percent || 0));
+    $("pct").textContent = Math.floor(pct) + "%";
+
+    var bar = $("bar");
+    bar.textContent = "";
+    bar.setAttribute("aria-label", "Job progress " + Math.floor(pct) + " percent");
+    if (j.segments && j.segments.length) {
+      var rest = el("div", "layer rest"), done = el("div", "layer done");
+      done.style.clipPath = "inset(0 " + (100 - pct) + "% 0 0)";
+      j.segments.forEach(function (s) {
+        [rest, done].forEach(function (layer) {
+          var e = el("div", "seg" + (s.unset ? " unset" : ""), (s.end - s.start) > 0.05 ? (s.tool === 0 ? "P" : s.code) : "");
+          e.style.left = (s.start * 100) + "%";
+          e.style.width = ((s.end - s.start) * 100) + "%";
+          e.style.setProperty("--c", s.color);
+          var info = (j.next && j.next.tool === s.tool) ? j.next : null;
+          e.style.setProperty("--t", info ? info.text : textOn(s.color));
+          layer.appendChild(e);
+        });
+      });
+      bar.appendChild(rest);
+      bar.appendChild(done);
+    } else {
+      var plain = el("div", "plain"), fill = el("i");
+      fill.style.width = pct + "%";
+      plain.appendChild(fill);
+      bar.appendChild(plain);
+    }
+    var mk = el("div", "marker"); mk.style.left = pct + "%";
+    bar.appendChild(mk);
+
+    var lg = $("legend");
+    lg.textContent = "";
+    var nextIdx = nx ? nx.index - 1 : (j.segments ? j.segments.length : 0);
+    (j.segments || []).forEach(function (s, i) {
+      var c = el("span", "chip");
+      if (i < nextIdx - 1) c.classList.add("done");
+      if (i === nextIdx - 1) c.classList.add("cur");
+      if (i === nextIdx) c.classList.add("nx");
+      var d = el("span", "dot" + (s.unset ? " unset" : "")); d.style.setProperty("--c", s.color);
+      c.appendChild(d);
+      var info = (v.legend || []).filter(function (t) { return t.tool === s.tool; })[0];
+      c.appendChild(el("span", "", (s.tool === 0 ? "Probe" : s.code) + (info && info.label ? " " + info.label : "")));
+      lg.appendChild(c);
+    });
+    show("run");
+  }
+
+  function textOn(hex) {
+    var h = (hex || "").replace("#", "");
+    if (h.length !== 6) return "#fff";
+    var c = [0, 2, 4].map(function (i) {
+      var x = parseInt(h.substr(i, 2), 16) / 255;
+      return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);
+    });
+    var L = 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+    return L > 0.3 ? "#111111" : "#ffffff";
+  }
+
+  // a bit's life gauge (the same colors as the Pi's screen): green, to yellow at 80 %, to red at 100 %
+  function mixHex(a, b, t) {
+    var out = "#";
+    for (var i = 1; i < 7; i += 2) {
+      var x = Math.round(parseInt(a.substr(i, 2), 16) * t + parseInt(b.substr(i, 2), 16) * (1 - t));
+      out += (x < 16 ? "0" : "") + x.toString(16);
+    }
+    return out;
+  }
+  function hm(s) {               // 45 min, 2 h 10, 3 h (a bit's time, the same as the Pi's screen)
+    var m = Math.round((s || 0) / 60);
+    return m < 60 ? m + " min" : Math.floor(m / 60) + " h" + (m % 60 ? " " + (m % 60 < 10 ? "0" : "") + m % 60 : "");
+  }
+  function lifeColor(f) {
+    if (f <= 0.5) return "#3fb950";
+    if (f < 0.8) return mixHex("#e8b23a", "#3fb950", (f - 0.5) / 0.3);
+    if (f < 1) return mixHex("#ff5b4f", "#e8b23a", (f - 0.8) / 0.2);
+    return "#ff5b4f";
+  }
+  function renderChange(v) {
+    var tc = v.toolchange;
+    var box = $("change");
+    setColor(box, tc);
+    var probe = tc.tool === 0;
+    $("chgLoad").textContent = probe ? "Load the probe" : "Load";
+    var out = tc.out, oc = $("chgOut");
+    oc.hidden = !out;
+    if (out) {
+      oc.style.setProperty("--oc", out.color);
+      oc.style.setProperty("--ot", out.text);
+      oc.classList.toggle("unset", !!out.unset);
+      oc.textContent = outWords(out);
+    }
+    $("chgCode").textContent = probe ? "Probe" : tc.code;
+    $("chgCode").hidden = probe;
+    $("chgName").textContent = probe ? "Wired probe" : (tc.label || "");
+    $("chgSticker").textContent = probe ? "" : (tc.unset && v.settings_url
+      ? "No sticker color set. Choose one at " + shortUrl(v.settings_url)
+      : tc.unset ? stickerText(tc) : "");
+    $("chgCount").textContent = tc.index && tc.total ? "Tool change " + tc.index + " of " + tc.total : "Tool change";
+    $("chgJob").textContent = v.job && v.job.name ? v.job.name : "";
+    var bit = probe ? null : tc.bit, cb = $("chgBit");
+    cb.hidden = !bit;
+    if (bit) {
+      $("chgBitText").textContent = bit.text;
+      var used = bit.limit ? bit.used / bit.limit : 0, then = bit.limit ? (bit.used + (bit.job_adds || 0)) / bit.limit : 0;
+      $("chgBitUsed").style.width = bit.limit ? Math.max(2, Math.min(100, 100 * used)) + "%" : "0";
+      $("chgBitUsed").style.background = lifeColor(used);
+      $("chgBitThen").style.width = bit.limit && used < 1 ? Math.min(100, 100 * then) + "%" : "0";
+      $("chgBitThen").style.background = lifeColor(then);
+      $("chgBitThen").style.opacity = ".45";
+    }
+    $("chgPress").textContent = probe
+      ? "Put the probe in, plug its cable into the port on the side of the head, then press the front button once."
+      : bit ? "Put bit " + bit.label + " in, then press the front button once."
+      : "Put this bit in, then press the front button once.";
+    var after = tc.then;
+    if (after) {
+      $("chgAfter").textContent = "After this: " + codeText(after) + (after.label ? " " + after.label : "") +
+        (after.in !== undefined ? " in about " + dur(after.in) : "");
+    } else if (v.job && v.job.known) {
+      $("chgAfter").textContent = "Last bit of the job";
+    } else {
+      $("chgAfter").textContent = "";
+    }
+    show("change");
+  }
+
+  function renderAlarm(v) {
+    var why = v.alarm || "Machine stopped";
+    $("alarmWhy").textContent = why;
+    var help = "Check the machine, then unlock it in Makera Studio.";
+    if (/probe/i.test(why)) help = "Check that the probe is in the spindle and its cable is plugged into the side of the head. Then unlock the machine in Makera Studio and start the job again.";
+    else if (/by hand/i.test(why)) help = "The job was stopped from the front button or from Makera Studio. Unlock the machine in Makera Studio to carry on.";
+    $("alarmHelp").textContent = help;
+    show("alarm");
+  }
+
+  function renderIdle(v) {
+    $("idleTitle").textContent = "Ready";
+    $("idleMachine").textContent = v.machine && v.machine.name ? v.machine.name : "";
+    var lj = v.last_job;
+    if (lj) {
+      $("last").hidden = false;
+      $("lastLabel").textContent = lj.done ? "Last job finished" : "Last job stopped";
+      $("lastName").textContent = lj.name || "Job";
+      setPart($("lastPic"), lj.preview);
+      var ended = new Date(lj.ended * 1000);
+      var at = "";
+      try { at = ended.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }); } catch (e) { at = ""; }
+      $("lastMeta").textContent = (lj.done ? "Took " + dur(lj.elapsed) : (lj.reason || "Stopped")) + (at ? " · ended at " + at : "");
+    } else {
+      $("last").hidden = true;
+    }
+    var hint = $("idleHint");
+    hint.textContent = "";
+    if (v.relay && v.relay.name) {
+      hint.appendChild(document.createTextNode("Start jobs from Makera Studio connected to "));
+      hint.appendChild(el("b", "", v.relay.name));
+      hint.appendChild(document.createTextNode(". This screen then follows the job."));
+    }
+    var more = $("idleSettings");
+    more.textContent = "";
+    if (v.settings_url) {
+      more.appendChild(document.createTextNode("Bit colors and a practice run: "));
+      more.appendChild(el("b", "", shortUrl(v.settings_url)));
+    }
+    show("idle");
+  }
+
+  function renderDemoTag(v) {
+    var d = v && v.demo;
+    document.body.classList.toggle("is-demo", !!d);
+    $("demoTag").hidden = !d;
+    if (!d) return;
+    var check = d.kind === "check";
+    $("demoKind").textContent = check ? "Color check" : "Demo";
+    $("demoText").textContent = check ? "Not a real job" : "Practice run, not the Z1";
+    $("demoEnds").textContent = d.ends_in !== undefined && d.ends_in !== null ? "Ends in " + dur(d.ends_in) : "";
+  }
+
+  function renderMsg(title, text) {
+    $("msgTitle").textContent = title;
+    $("msgText").textContent = text;
+    show("msg");
+  }
+
+  function render(v) {
+    last = v;
+    lastAt = Date.now();
+    $("banner").hidden = true;
+    renderDemoTag(v);
+    if (!v || !v.mode) { renderMsg("Starting", "Getting ready."); return; }
+    switch (v.mode) {
+      case "toolchange": renderChange(v); break;
+      case "alarm": renderAlarm(v); break;
+      case "running":
+      case "paused": if (v.job) { renderRun(v); } else { renderIdle(v); } break;
+      case "idle": renderIdle(v); break;
+      case "direct":
+        renderMsg("Makera Studio is connected straight to the Z1",
+          "This screen can't see the job while it is. In Makera Studio, connect to " +
+          ((v.relay && v.relay.name) || "the machine name ending in _screen") +
+          " instead, or disconnect Makera Studio after starting the job and this screen picks the job up.");
+        break;
+      case "connecting":
+        renderMsg("Connecting to the Z1", "Found " + ((v.machine && v.machine.name) || "the machine") + ". Waiting for it to answer.");
+        break;
+      default:
+        renderMsg("Looking for the Z1", "Make sure the Z1 is on and on the same Wi-Fi as this screen.");
+    }
+  }
+  window.Z1Screen = { render: render };
+
+  // keep the display awake where the browser allows it
+  function wake() {
+    try { if (navigator.wakeLock) navigator.wakeLock.request("screen").catch(function () {}); } catch (e) {}
+  }
+  document.addEventListener("visibilitychange", function () { if (!document.hidden) wake(); });
+  wake();
+
+  if (window.Z1_DEMO) return;
+
+  function poll() {
+    fetch("state", { cache: "no-store" }).then(function (r) { return r.json(); }).then(render)
+      .catch(function () {}).then(function () { setTimeout(poll, 1000); });
+  }
+  if (window.EventSource) {
+    var es = new EventSource("events");
+    es.onmessage = function (e) { try { render(JSON.parse(e.data)); } catch (err) {} };
+  } else {
+    poll();
+  }
+  setInterval(function () {
+    if (Date.now() - lastAt > 6000) $("banner").hidden = false;
+  }, 2000);
+})();
+</script>
+<script>
+(function () {
+  "use strict";
+  var TL = window.Z1_TIMELINE;
+  var $ = function (id) { return document.getElementById(id); };
+  function inflate(o) {
+    if (Array.isArray(o)) return o.map(inflate);
+    if (o && typeof o === "object") {
+      if (o.$ !== undefined && Object.keys(o).length === 1) return inflate(TL.shared[o.$]);
+      var out = {};
+      Object.keys(o).forEach(function (k) { out[k] = inflate(o[k]); });
+      return out;
+    }
+    return o;
+  }
+  var frames = TL.frames.map(function (f) { return { k: f.k, est: f.est, view: inflate(f.view), tft: inflate(f.tft) }; });
+  var extras = { probe: inflate(TL.extras.probe), hand: inflate(TL.extras.hand) };
+  var extrasTft = { probe: inflate(TL.extras_tft.probe), hand: inflate(TL.extras_tft.hand) };
+
+  // ---- the Pi's 2.8-inch screen: draws the same steps as z1screen/tft.py paint()
+  var cv = $("tftCanvas"), cx = cv.getContext("2d"), tftScale = 2;
+  function fnt(f, z) { var d = TL.fonts[f]; return d[1] + " " + z + "px '" + d[0] + "', 'Arial Narrow', sans-serif"; }
+  function hexRgb(c) { c = (c || "#000000").replace("#", ""); return [0, 2, 4].map(function (i) { return parseInt(c.substr(i, 2), 16); }); }
+  function mixHex(a, b, t) {
+    var x = hexRgb(a), y = hexRgb(b);
+    return "#" + x.map(function (v, i) { var m = Math.round(v * t + y[i] * (1 - t)); return (m < 16 ? "0" : "") + m.toString(16); }).join("");
+  }
+  function hhmm(ms) {
+    var d = new Date(ms), h = d.getHours(), m = d.getMinutes();
+    return (h % 12 || 12) + ":" + (m < 10 ? "0" : "") + m + " " + (h < 12 ? "AM" : "PM");
+  }
+  function rr(x, y, w, h, r) {
+    cx.beginPath();
+    if (!r) { cx.rect(x, y, w, h); return; }
+    cx.moveTo(x + r, y); cx.arcTo(x + w, y, x + w, y + h, r); cx.arcTo(x + w, y + h, x, y + h, r);
+    cx.arcTo(x, y + h, x, y, r); cx.arcTo(x, y, x + w, y, r); cx.closePath();
+  }
+  function poly(pts, c) {
+    cx.beginPath(); cx.moveTo(pts[0][0], pts[0][1]);
+    for (var i = 1; i < pts.length; i++) cx.lineTo(pts[i][0], pts[i][1]);
+    cx.closePath(); cx.fillStyle = c; cx.fill();
+  }
+  function stripes(x, y, w, h, c, c1, c2, p) {
+    cx.fillStyle = c; cx.fillRect(x, y, w, h);
+    var half = p / 2;
+    for (var k = -2; k * p < w + h + p; k++) {
+      var a = x + k * p;
+      poly([[a, y], [a + half, y], [a + half - h, y + h], [a - h, y + h]], c1);
+      poly([[a + half, y], [a + p, y], [a + p - h, y + h], [a + half - h, y + h]], c2);
+    }
+  }
+  function txt(op, s, color) {
+    cx.font = fnt(op.f, op.z); cx.fillStyle = color; cx.textBaseline = "alphabetic";
+    var a = op.a || "l";
+    if (op.ls) {
+      var total = op.ls * (s.length - 1), i;
+      for (i = 0; i < s.length; i++) total += cx.measureText(s[i]).width;
+      var x = op.x - (a === "r" ? total : a === "m" ? total / 2 : 0);
+      cx.textAlign = "left";
+      for (i = 0; i < s.length; i++) { cx.fillText(s[i], x, op.y); x += cx.measureText(s[i]).width + op.ls; }
+      return;
+    }
+    cx.textAlign = a === "r" ? "right" : a === "m" ? "center" : "left";
+    if (op.mw) cx.fillText(s, op.x, op.y, op.mw); else cx.fillText(s, op.x, op.y);
+  }
+  function bar(op) {
+    var x = op.x, y = op.y, w = op.w, h = op.h, px = Math.round(w * op.p / 100);
+    cx.save(); rr(x, y, w, h, op.r || 0); cx.clip();
+    cx.fillStyle = op.track; cx.fillRect(x, y, w, h);
+    [["q", "lq", w], ["c", "lc", px]].forEach(function (L) {
+      cx.save(); cx.beginPath(); cx.rect(x, y, L[2], h); cx.clip();
+      if (op.segs.length) {
+        op.segs.forEach(function (sg) {
+          var x0 = Math.round(sg.a * w), x1 = Math.round(sg.b * w), c = sg[L[0]];
+          if (x1 <= x0) return;
+          if (sg.u) stripes(x + x0, y, x1 - x0, h, c, mixHex("#FFFFFF", c, 0.10), mixHex("#000000", c, 0.14), 8);
+          else { cx.fillStyle = c; cx.fillRect(x + x0, y, x1 - x0, h); }
+          cx.fillStyle = op.g; cx.fillRect(x + x1 - 2, y, 2, h);
+          if (sg.l) {
+            cx.font = fnt(op.f, op.z); cx.fillStyle = sg[L[1]]; cx.textAlign = "left"; cx.textBaseline = "alphabetic";
+            cx.fillText(sg.l, x + x0 + 4, y + Math.floor(h / 2) + Math.floor(op.z * 0.36));
+          }
+        });
+      } else if (L[0] === "c") { cx.fillStyle = op.plain; cx.fillRect(x, y, w, h); }
+      cx.restore();
+    });
+    cx.restore();
+    var mx = x + px;
+    cx.fillStyle = op.g; cx.fillRect(mx - 3, y - 5, 6, h + 10);
+    cx.fillStyle = op.m; cx.fillRect(mx - 1, y - 3, 2, h + 6);
+  }
+  function paintTft(ops, clockMs) {
+    var dim = Math.floor(Date.now() / 1000) % 2 === 1, k = tftScale * (window.devicePixelRatio || 1);
+    cx.setTransform(k, 0, 0, k, 0, 0);
+    cx.fillStyle = "#141311"; cx.fillRect(0, 0, 320, 240);
+    ops.forEach(function (op) {
+      if (op.o === "r") { rr(op.x, op.y, op.w, op.h, op.r || 0); cx.fillStyle = op.c; cx.fill(); }
+      else if (op.o === "s") {
+        cx.save(); rr(op.x, op.y, op.w, op.h, op.r || 0); cx.clip();
+        stripes(op.x, op.y, op.w, op.h, op.c, op.c1, op.c2, op.p || 24); cx.restore();
+      }
+      else if (op.o === "c") { cx.beginPath(); cx.arc(op.x, op.y, op.r, 0, Math.PI * 2); cx.fillStyle = op.c; cx.fill(); }
+      else if (op.o === "t") {
+        var s = op.t, kk = op.k;
+        if (kk) {
+          var when = kk.tag === "ended" ? (S.doneClock || clockMs) : kk["in"] !== undefined ? clockMs + kk["in"] * 1000 : kk.at * 1000;
+          s = kk.fmt.split("%%").map(function (part) { return part.replace("%s", hhmm(when)); }).join("%");
+        }
+        txt(op, s, dim && op.bl ? op.bl : op.c);
+      }
+      else if (op.o === "bar") bar(op);
+    });
+  }
+  function drawTft() {
+    if (!document.body.classList.contains("tft-mode")) return;
+    paintTft(S.whatif ? extrasTft[S.whatif] : frames[S.i].tft, S.clock);
+  }
+  function fitTft() {
+    var stage = $("tftStage"), note = stage.querySelector(".tft-note");
+    var bz = Math.max(10, Math.min(22, Math.round(window.innerWidth / 50)));
+    var w = stage.clientWidth - 32 - 2 * bz, h = stage.clientHeight - 32 - 2 * bz - (note ? note.offsetHeight + 14 : 0);
+    tftScale = Math.max(0.75, Math.min(3, w / 320, h / 240));
+    var dpr = window.devicePixelRatio || 1;
+    cv.width = Math.round(320 * tftScale * dpr); cv.height = Math.round(240 * tftScale * dpr);
+    cv.style.width = Math.round(320 * tftScale) + "px"; cv.style.height = Math.round(240 * tftScale) + "px";
+    $("tftBezel").style.setProperty("--bz", bz + "px");
+    drawTft();
+  }
+  function setShow(which) {
+    S.show = which === "page" ? "page" : "tft";
+    document.body.classList.toggle("tft-mode", S.show === "tft");
+    Array.prototype.forEach.call(document.querySelectorAll("[data-show]"), function (o) {
+      o.setAttribute("aria-pressed", o.dataset.show === S.show ? "true" : "false");
+    });
+    try { localStorage.setItem("z1demo-show", S.show); } catch (e) {}
+    if (S.show === "tft") fitTft();
+  }
+  var S = { phase: "ready", i: 0, est: 0, speed: 60, paused: false, clock: Date.now(), doneClock: 0, show: "tft",
+            whatif: null, toast: "", toastUntil: 0, t: 0, shownAt: 0, sayText: "" };
+
+  function dur(s) {
+    s = Math.max(0, Math.round(s));
+    var h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+    return h ? h + " h " + (m < 10 ? "0" : "") + m + " min" : m + " min";
+  }
+  function view() {
+    var v;
+    if (S.whatif) {
+      v = Object.assign({}, extras[S.whatif]);
+    } else {
+      v = Object.assign({}, frames[S.i].view);
+      if (v.last_job) v.last_job = Object.assign({}, v.last_job, { ended: (S.doneClock || S.clock) / 1000 });
+    }
+    v.clock = S.clock / 1000;
+    return v;
+  }
+  function show() {
+    window.Z1Screen.render(view());
+    drawTft();
+    S.shownAt = performance.now();
+    dock();
+  }
+  function enter(i) {
+    S.i = i;
+    var f = frames[i];
+    if (f.k === "stop") { S.phase = "stop"; S.est = f.est; return true; }
+    if (f.k === "done") { S.phase = "done"; S.est = f.est; S.doneClock = S.clock; return true; }
+    S.phase = "run";
+    return false;
+  }
+  function step(dt) {
+    if (S.whatif) return false;
+    if (S.phase === "run" && !S.paused) {
+      S.clock += dt * 1000 * S.speed;
+      S.est += dt * S.speed;
+      var moved = false;
+      while (S.i + 1 < frames.length && frames[S.i + 1].est <= S.est) {
+        moved = true;
+        if (enter(S.i + 1)) break;
+      }
+      return moved;
+    }
+    S.clock += dt * 1000;
+    return false;
+  }
+  function loop(t) {
+    var dt = S.t ? Math.min(0.25, Math.max(0, (t - S.t) / 1000)) : 0;
+    S.t = t;
+    if (step(dt) || t - S.shownAt > 1000) show();
+    else if (S.toast && performance.now() > S.toastUntil) { S.toast = ""; dock(); }
+    requestAnimationFrame(loop);
+  }
+
+  function say() {
+    if (S.toast && performance.now() < S.toastUntil) return S.toast;
+    if (S.whatif === "probe") return "If the probe cable isn't plugged in, the Z1 stops when it tries to probe and the screen shows this. Plug the cable in, unlock the Z1 in Makera Studio, and start the job again.";
+    if (S.whatif === "hand") return "Pressing the front button while the Z1 is cutting stops the job, and the screen shows this. On the real Z1 you would unlock it in Makera Studio and start the job again.";
+    var v = frames[S.i].view;
+    if (S.phase === "ready") return "The Z1 is idle. You set up the job in Makera Studio as usual, connected to " + TL.relay + ", and press Run.";
+    if (S.phase === "stop") {
+      var tc = v.toolchange || {};
+      if (tc.tool === 0) return "The Z1 beeps and waits for the probe. Put the probe in, plug its cable into the port on the side of the head, then press the front button once.";
+      return "The Z1 beeps and waits for " + tc.code + ". Fit the " + (tc.label || "bit") +
+        (tc.sticker ? " with the " + tc.sticker.toLowerCase() + " sticker" : "") + ", then press the front button once.";
+    }
+    if (S.phase === "done") return "The job is done. The screen shows the finished job until the next one starts.";
+    if (S.paused) return "Paused. This only pauses the demo; the real Z1 keeps cutting.";
+    return "The Z1 is cutting. Nothing to do until it beeps." +
+      (S.speed === 1 ? " Playing at the machine's real speed." : " The demo plays " + S.speed + "\u00d7 faster than the machine.");
+  }
+  function dock() {
+    var text = say();
+    if (text !== S.sayText) { $("say").textContent = text; S.sayText = text; }
+    var act = $("act"), front = $("front");
+    act.hidden = S.phase === "stop" && !S.whatif;
+    act.textContent = S.whatif ? "Go back" : S.phase === "ready" ? "Press Run" : S.phase === "done" ? "Play again"
+      : S.paused ? "Resume" : "Pause";
+    $("skip").disabled = S.whatif !== null || S.phase !== "run";
+    front.disabled = S.whatif !== null || (S.phase !== "stop" && S.phase !== "run");
+    var waiting = S.phase === "stop" && !S.whatif;
+    front.classList.toggle("waiting", waiting);
+    var tc = waiting ? frames[S.i].view.toolchange : null;
+    front.style.setProperty("--wait", tc ? tc.color : "#f4f0e8");
+    front.setAttribute("aria-label", waiting ? "The Z1's front button: press to carry on after loading the bit" : "The Z1's front button");
+  }
+
+  function act() {
+    if (S.whatif) { S.whatif = null; show(); return; }
+    if (S.phase === "ready") { enter(1); show(); return; }
+    if (S.phase === "done") { restart(); return; }
+    if (S.phase === "run") { S.paused = !S.paused; dock(); }
+  }
+  function front() {
+    if (S.whatif) return;
+    if (S.phase === "stop") {
+      S.phase = "run";
+      if (S.i + 1 < frames.length) S.i += 1;
+      S.paused = false;
+      show();
+    } else if (S.phase === "run") {
+      S.whatif = "hand";
+      show();
+    }
+  }
+  function skip() {
+    if (S.phase !== "run" || S.whatif) return;
+    var j = S.i + 1;
+    while (j < frames.length && frames[j].k !== "stop" && frames[j].k !== "done") j++;
+    if (j >= frames.length) return;
+    var target = Math.max(S.est, frames[j].est - 90);
+    S.clock += (target - S.est) * 1000;
+    S.est = target;
+    while (S.i + 1 < j && frames[S.i + 1].est <= S.est) S.i++;
+    S.paused = false;
+    show();
+  }
+  function restart() {
+    S.phase = "ready"; S.i = 0; S.est = 0; S.paused = false; S.whatif = null; S.toast = "";
+    S.clock = Date.now(); S.doneClock = 0;
+    show();
+  }
+  function whatIf(kind) {
+    $("whatif").open = false;
+    if (kind === "laptop") {
+      S.toast = "Nothing changes on the screen. The job runs from the Z1's own storage, and the Pi keeps asking the Z1 for its status.";
+      S.toastUntil = performance.now() + 9000;
+      dock();
+      return;
+    }
+    S.whatif = kind;
+    show();
+  }
+
+  $("dockLabel").textContent = "Demo \u00b7 " + TL.title + " \u00b7 " + dur(TL.total) + " job, " +
+    frames.filter(function (f) { return f.k === "stop"; }).length + " stops";
+  $("act").addEventListener("click", act);
+  $("front").addEventListener("click", front);
+  $("skip").addEventListener("click", skip);
+  $("restart").addEventListener("click", restart);
+  Array.prototype.forEach.call(document.querySelectorAll("[data-speed]"), function (b) {
+    b.addEventListener("click", function () {
+      S.speed = Number(b.dataset.speed);
+      Array.prototype.forEach.call(document.querySelectorAll("[data-speed]"), function (o) {
+        o.setAttribute("aria-pressed", o === b ? "true" : "false");
+      });
+      dock();
+    });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-what]"), function (b) {
+    b.addEventListener("click", function () { whatIf(b.dataset.what); });
+  });
+  document.addEventListener("click", function (e) {
+    var w = $("whatif");
+    if (w.open && !w.contains(e.target)) w.open = false;
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-show]"), function (b) {
+    b.addEventListener("click", function () { setShow(b.dataset.show); show(); });
+  });
+  document.body.classList.add("has-demo");
+  function fit() {
+    document.body.style.setProperty("--dock-h", $("dock").offsetHeight + "px");
+    if (S.show === "tft") fitTft();
+  }
+  if (window.ResizeObserver) new ResizeObserver(fit).observe($("dock"));
+  window.addEventListener("resize", fit);
+  var saved = "tft";
+  try { saved = localStorage.getItem("z1demo-show") || "tft"; } catch (e) {}
+  setShow(saved);
+  fit();
+  show();
+  if (document.fonts && document.fonts.load) {
+    Promise.all(Object.keys(TL.fonts).map(function (f) { return document.fonts.load(fnt(f, 24)); }))
+      .then(drawTft, drawTft);
+    document.fonts.ready.then(drawTft);
+  }
+  requestAnimationFrame(loop);
+})();
+</script>

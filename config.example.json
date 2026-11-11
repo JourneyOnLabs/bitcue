@@ -1,0 +1,9 @@
+{
+  "_about": "BitCue settings. Most settings are on the settings page, which overrides this file. All settings: z1screen/config.py.",
+
+  "_machine_ip": "Leave empty to find the Z1 automatically. If that fails, enter its IP address, e.g. 192.168.1.50.",
+  "machine_ip": "",
+
+  "tft": {"flip": false, "clock_24h": false},
+  "relay_name_suffix": "_screen"
+}

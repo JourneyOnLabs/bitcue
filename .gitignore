@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+tests/out/
+dist/
+docs/screens/*.json
+.DS_Store
+3.5DPI-dtbo.zip

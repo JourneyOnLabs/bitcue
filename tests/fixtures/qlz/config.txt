@@ -1,0 +1,5 @@
+# Makera Z1 settings (made up for the tests)
+coordinate.anchor1_x            -200      # anchor 1
+coordinate.anchor1_y            -200
+coordinate.anchor2_offset_x     90
+coordinate.anchor2_offset_y     45

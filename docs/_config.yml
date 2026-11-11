@@ -1,0 +1,4 @@
+# GitHub Pages serves this folder as BitCue's website (journeyonlabs.github.io/bitcue, RELEASING.md).
+# Its pages may link only inside docs/ or to full addresses: the rest of the repo isn't on the website.
+title: BitCue
+description: A screen for the Makera Z1 that shows the running job and turns the color of the bit to load at each tool change.

@@ -30,12 +30,13 @@ while [ $# -gt 0 ]; do
     --hdmi) MODE=hdmi ;;
     --tft) MODE=tft; SCREEN=pitft ;;
     --dpi35) MODE=tft; SCREEN=dpi35 ;;
+    --dsi43) MODE=tft; SCREEN=dsi43 ;;
     --flip) FLIP=yes ;;
     --no-flip) FLIP=no ;;
     --no-reboot) REBOOT=no ;;
     --config) shift; SETTINGS="${1:-}" ;;
     --config=*) SETTINGS="${1#--config=}" ;;
-    *) echo "Unknown option: $1  (the options are --dpi35, --hdmi, --flip, --no-flip, --no-reboot and --config FILE)"; exit 1 ;;
+    *) echo "Unknown option: $1  (the options are --dsi43, --dpi35, --hdmi, --flip, --no-flip, --no-reboot and --config FILE)"; exit 1 ;;
   esac
   shift
 done

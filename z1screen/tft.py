@@ -1575,15 +1575,19 @@ class Framebuffer:
                 if fb.dev == device:
                     return fb
             return None
-        small = [fb for fb in fbs if 0 < max(fb.width, fb.height) <= 640 and fb.bpp in (16, 24, 32)]
+        small = [fb for fb in fbs if 0 < max(fb.width, fb.height) <= 800 and fb.bpp in (16, 24, 32)]
         small.sort(key=lambda fb: (0 if sorted((fb.width, fb.height)) == [240, 320] else 1 if fb.scale() > 1 else 2,
                                    fb.index))
         return small[0] if small else None
 
     def scale(self) -> int:
-        """2 for a 640 x 480 screen (3, 4 for 960 x 720, 1280 x 960): the screens are drawn that much larger
+        """2 for a 640 x 480 screen and 800x480 screens (3, 4 for 960 x 720, 1280 x 960): the screens are drawn that much larger
         to fill it exactly. 1 for anything else."""
         big, small = max(self.width, self.height), min(self.width, self.height)
+        
+        if (big, small) == (800, 480):
+            return 2
+
         for k in (4, 3, 2):
             if big == W * k and small == H * k:
                 return k

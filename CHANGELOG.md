@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.9.2 (14 November 2026)
 
 - The time left matches Makera Studio's. When a job file carries Makera's own time estimate (Makera Studio
   writes one), that is the job's total, however far BitCue's own reckoning from the moves is from it; BitCue's
@@ -11,6 +11,8 @@
   a machine running anywhere from 5 times faster to 5 times slower (before: 0.6 to 1.8).
 - The README and the website link the videos on YouTube (the 50-second film and the 37-second live look,
   filmed on a real job) instead of keeping video files in the repository.
+## 0.9.1 (released 11 November 2026, the first release on github.com/journeyonlabs/bitcue)
+
 - The housing's 3D files are the universal version only, for the Waveshare screen on a Pi 3A+, 3B+, 3B or 4.
   The PiTFT housing isn't sold; the software still supports the PiTFT.
 - The parts list is grouped: one of each, the part for the set-up you choose (the Z1 or the desk), and
@@ -77,8 +79,6 @@
 - Get the hardware (docs/buy.md): the housing's 3D files (sold separately, not in this repository) and a parts list for each version (universal: one housing for the Pi 3A+, 3B+, 3B or 4 with the Waveshare 3.5inch DPI LCD; PiTFT version), linked from the README.
   hardware/README.md now has the screen and housing notes.
 - A hardware question issue template and SUPPORT.md.
-
-## 0.9.1
 
 - Fixed: if the Pi restarted during a job, it could add an unnamed area to the plate.
 

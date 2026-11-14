@@ -47,6 +47,8 @@ same.
 
 **[Printables Store][printables]** · **[Cults3D][cults3d]** ($8)
 
+[![The four printed parts: the face plate, the shell, the tilt plate for the Z1 and the table stand](housing/parts.jpg)][printables]
+
 - The face plate, the shell, the tilt plate for the Z1 and the table stand, with a one-plate print project and a
   CAD assembly for each set-up.
 - STL and 3MF laid out in print orientation, and STEP to change in your own CAD.

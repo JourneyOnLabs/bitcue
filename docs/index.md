@@ -7,6 +7,19 @@ title: BitCue
 A screen for the Makera Z1 that shows the running job: the bit cutting now, the next bit and when it is
 needed, and the time left. At a tool change, the whole screen turns the color of the bit to load.
 
+<p>
+<a href="https://www.printables.com/model/1909246-bitcue-screen-housing-for-makera-z1-raspberry-pi-t"><img src="housing/on-the-z1.jpg" width="32%" alt="BitCue in its housing on the front base of a Makera Z1"></a>
+<a href="https://www.printables.com/model/1909246-bitcue-screen-housing-for-makera-z1-raspberry-pi-t"><img src="housing/snap-together.jpg" width="32%" alt="The face plate, screen, Pi and shell of the housing snapping together"></a>
+<a href="https://www.printables.com/model/1909246-bitcue-screen-housing-for-makera-z1-raspberry-pi-t"><img src="housing/table-stand.jpg" width="32%" alt="The housing on its table stand on the desk beside the Z1"></a>
+</p>
+
+**The housing** hangs on the Z1's front base (VHB tape, no drilling) or stands on the desk beside it, and
+prints without supports. Its 3D files are $8 on the
+[Printables Store](https://www.printables.com/model/1909246-bitcue-screen-housing-for-makera-z1-raspberry-pi-t)
+or [Cults3D](https://cults3d.com/en/3d-model/gadget/bitcue-screen-housing-for-makera-z1-raspberry-pi-touch-screen-snap-fit-z1-mou):
+print it yourself or have it printed. The software is free. Left: a photo on a real Z1; middle and right:
+renders from the 3D files.
+
 [![BitCue: a job screen for the Makera Z1. Watch the 50-second film on YouTube](promo.jpg)](https://youtu.be/L5BRykSpnWU)
 
 Film, 50 s, on YouTube. Rendered from the 3D files, not filmed.

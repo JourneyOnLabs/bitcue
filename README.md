@@ -26,6 +26,19 @@ screen turns the color of the bit to load.
 It runs on a Raspberry Pi with a 2.8" or 3.5" touch screen or an HDMI monitor. Makera
 Studio connects to the Z1 through the Pi.
 
+<p>
+<a href="https://www.printables.com/model/1909246-bitcue-screen-housing-for-makera-z1-raspberry-pi-t"><img src="docs/housing/on-the-z1.jpg" width="32%" alt="BitCue in its housing on the front base of a Makera Z1"></a>
+<a href="https://www.printables.com/model/1909246-bitcue-screen-housing-for-makera-z1-raspberry-pi-t"><img src="docs/housing/snap-together.jpg" width="32%" alt="The face plate, screen, Pi and shell of the housing snapping together"></a>
+<a href="https://www.printables.com/model/1909246-bitcue-screen-housing-for-makera-z1-raspberry-pi-t"><img src="docs/housing/table-stand.jpg" width="32%" alt="The housing on its table stand on the desk beside the Z1"></a>
+</p>
+
+**The housing** hangs on the Z1's front base (VHB tape, no drilling) or stands on the desk beside it, and
+prints without supports. Its 3D files are $8 on the
+[Printables Store](https://www.printables.com/model/1909246-bitcue-screen-housing-for-makera-z1-raspberry-pi-t)
+or [Cults3D](https://cults3d.com/en/3d-model/gadget/bitcue-screen-housing-for-makera-z1-raspberry-pi-touch-screen-snap-fit-z1-mou):
+print it yourself or have it printed. The software is free. Left: a photo on a real Z1; middle and right:
+renders from the 3D files.
+
 Unofficial: not made by or affiliated with Makera. Version 0.9 (beta).
 
 [![BitCue: a job screen for the Makera Z1. Watch the 50-second film on YouTube](docs/promo.jpg)](https://youtu.be/L5BRykSpnWU)
@@ -56,6 +69,8 @@ desk beside it.
 - **[The electronics](docs/buy.md#electronics-parts-list)**: a parts list for a Pi 3A+, 3B+, 3B or 4 with the
   Waveshare 3.5inch DPI screen.
   BitCue doesn't sell these; some of the links are affiliate links.
+
+[![The four printed parts: the face plate, the shell, the tilt plate for the Z1 and the table stand](docs/housing/parts.jpg)](https://www.printables.com/model/1909246-bitcue-screen-housing-for-makera-z1-raspberry-pi-t)
 
 ## What it does
 

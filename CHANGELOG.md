@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- The README and the website show the housing near the top: a photo on a real Z1, the parts snapping together
+  and the table stand, with the links to the 3D files. The README's Get the hardware and the parts list show the
+  four printed parts.
+
 ## 0.9.2 (14 November 2026)
 
 - The time left matches Makera Studio's. When a job file carries Makera's own time estimate (Makera Studio

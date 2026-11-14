@@ -10,7 +10,8 @@ takes distance / feed (feeds capped at 1200 mm/min, Z at 600 mm/min, rapids at
 1200 mm/min across and 600 mm/min down), with a floor of 35 ms per move
 (26 ms for a V-bit), 102 s at the start for probing and 60 s for each later
 tool change. When the file carries Makera's own estimate
-(";@MKR|TIME|seconds=..."), the estimate is scaled to match it. While the job
+(";@MKR|TIME|seconds=..."), that is the total and the model only shares it out
+across the file, however far apart the two are. While the job
 runs, the screen also corrects the estimate with the machine's real elapsed
 time.
 """
@@ -26,8 +27,9 @@ from array import array
 
 from . import platemap
 
-PROFILE_VERSION = 7   # 5: the job's box, depth, plate and run window; 6: the bits' sizes and the job's
-#                       footprint; 7: short bit descriptions, and the tool lines' fields (tool_specs)
+PROFILE_VERSION = 8   # 5: the job's box, depth, plate and run window; 6: the bits' sizes and the job's
+#                       footprint; 7: short bit descriptions, and the tool lines' fields (tool_specs);
+#                       8: Makera's estimate is always the total
 DEFAULT_BIT_D = 3.175  # mm, for a bit whose size the file doesn't state (the Z1's 1/8" shank)
 RAPID_XY = 1200.0   # mm/min
 RAPID_Z = 600.0     # mm/min
@@ -405,11 +407,12 @@ def analyze(data: bytes, path: str = "") -> dict:
         cum[k] = t
 
     total = t
+    # Makera's own estimate, when the file carries it, is the job's total, so the times match Makera Studio's
+    # (Boreack, r/Makera, 13 Nov 2026: on a carved ball of short moves this model said 3 h, Studio 31 min left).
+    # This model only shares it out: where each bit's stretch and each tool change falls.
     scale = 1.0
-    if header_time and total > 0:
-        r = header_time / total
-        if 0.5 <= r <= 2.0:
-            scale = r
+    if header_time and header_time > 0 and total > 0:
+        scale = header_time / total
     step = max(1, math.ceil((n + 1) / MAX_CHECKPOINTS))
     cp = [round(cum[i] * scale, 1) for i in range(0, n + 1, step)]
     if (n % step) != 0:

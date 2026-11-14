@@ -903,7 +903,7 @@ class Hub(JobsMixin):
                 est = prof.time_at(line) if line > 0 else 0.0
                 if passed > 0:
                     est = max(est, changes[passed - 1]["t"])
-                ratio = self._update_ratio(job, elapsed, est)
+                ratio = self._update_ratio(job, elapsed, est, bool(prof.d.get("header_time")))
                 total = prof.total
                 jv["percent"] = max(0.0, min(100.0, 100.0 * est / total)) if total > 0 else 0.0
                 jv["left"] = max(0.0, (total - est) * ratio)
@@ -955,7 +955,7 @@ class Hub(JobsMixin):
                 if after < len(changes):
                     nx = changes[after]
                     then = self.tool_info(nx["tool"], prof)
-                    then["in"] = max(0.0, (nx["t"] - here) * ((job or {}).get("ratio") or 1.0))
+                    then["in"] = max(0.0, (nx["t"] - here) * ((job or {}).get("ratio_used") or 1.0))
                     then["index"] = after + 1
                     tc["then"] = then
             v["toolchange"] = tc
@@ -966,37 +966,39 @@ class Hub(JobsMixin):
         return v
 
     @staticmethod
-    def _update_ratio(job: dict, elapsed: float, est: float) -> float:
+    def _update_ratio(job: dict, elapsed: float, est: float, makera: bool = False) -> float:
         """How fast the machine runs compared with the estimate.
 
-        Measured over the last stretch of cutting (at least 10 estimated
-        minutes), so a long probing or leveling step at the start does not
-        skew it. Starts at 1.0 until there is enough data.
+        Measured over the last stretch of cutting (at least 5 estimated minutes), so a long probing or leveling
+        step at the start does not skew it, and followed quickly (half of each new measurement). Starts at 1.0
+        until there is enough data. When the estimate is Makera's own (makera), a measurement within 15 % of it
+        counts as 1.0, so the screen keeps showing Makera Studio's times unless the job clearly runs faster or
+        slower. The ratio used is kept in job["ratio_used"].
         """
         samples = job.setdefault("samples", [])
         ratio = job.get("ratio") or 1.0
-        if est <= 0:
-            return ratio
-        if samples and est < samples[-1][1]:
-            samples.clear()
-        if samples and est - samples[-1][1] < 15:
-            return ratio  # nothing new since the last sample
-        samples.append((elapsed, est))
-        if len(samples) > 400:
-            del samples[:100]
-        window = None
-        for e0, s0 in samples:
-            if est - s0 >= 600:
-                window = (e0, s0)
-            else:
-                break
-        if window is not None:
-            e0, s0 = window
-            r = max(0.6, min(1.8, (elapsed - e0) / (est - s0)))
-            ratio = r if job.get("ratio") is None else job["ratio"] * 0.8 + r * 0.2
-            job["ratio"] = ratio
-            while len(samples) > 2 and est - samples[1][1] > 2700:
-                samples.pop(0)
+        if est > 0 and samples and est < samples[-1][1]:
+            samples.clear()  # the job went back (a restart part way): measure afresh
+        if est > 0 and not (samples and est - samples[-1][1] < 15):
+            samples.append((elapsed, est))
+            if len(samples) > 400:
+                del samples[:100]
+            window = None
+            for e0, s0 in samples:
+                if est - s0 >= 300:
+                    window = (e0, s0)
+                else:
+                    break
+            if window is not None:
+                e0, s0 = window
+                r = max(0.2, min(5.0, (elapsed - e0) / (est - s0)))
+                ratio = r if job.get("ratio") is None else job["ratio"] * 0.5 + r * 0.5
+                job["ratio"] = ratio
+                while len(samples) > 2 and est - samples[1][1] > 1800:
+                    samples.pop(0)
+        if makera and abs(ratio - 1.0) < 0.15:
+            ratio = 1.0
+        job["ratio_used"] = ratio
         return ratio
 
     async def view_loop(self) -> None:
@@ -1112,7 +1114,7 @@ class Hub(JobsMixin):
             if prof is not None and k:
                 ch = prof.changes
                 end = ch[k]["t"] if k < len(ch) else prof.total
-                adds = max(0.0, (end - ch[k - 1]["t"]) * ((self.job or {}).get("ratio") or 1.0))
+                adds = max(0.0, (end - ch[k - 1]["t"]) * ((self.job or {}).get("ratio_used") or 1.0))
             st = life.status(nb, mat, job_adds=adds) if nb else {}
             if st:
                 nx["bit"] = dict(st, text=life.short_text(st))

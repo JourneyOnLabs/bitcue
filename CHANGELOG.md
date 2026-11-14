@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- The time left matches Makera Studio's. When a job file carries Makera's own time estimate (Makera Studio
+  writes one), that is the job's total, however far BitCue's own reckoning from the moves is from it; BitCue's
+  reckoning only places each bit's stretch and the tool changes within it. Before, BitCue used Makera's estimate
+  only within half to double of its own, and on jobs of many short moves (a carved 3D surface) showed hours too
+  many. While the job runs, the screen still follows the machine's real pace, but only when it differs from
+  Makera's estimate by more than 15 %; it measures over the last 5 estimated minutes instead of 10 and can follow
+  a machine running anywhere from 5 times faster to 5 times slower (before: 0.6 to 1.8).
 - The README and the website link the videos on YouTube (the 50-second film and the 37-second live look,
   filmed on a real job) instead of keeping video files in the repository.
 - The housing's 3D files are the universal version only, for the Waveshare screen on a Pi 3A+, 3B+, 3B or 4.

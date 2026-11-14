@@ -193,4 +193,33 @@ check(th.touch_info()["cal"] is None, "a screen size that can't be read changes 
 th.set_touch({"cal": saved})
 check(th.touch["screen"] == [320, 240], "a calibration sent without its screen is kept for the screen named last")
 
+print("time left: Makera's estimate is the total, and the screen follows the machine only when it clearly differs")
+from z1screen import gcode
+moves = "".join("G1 X%.2f Y%.2f F1000\n" % (i % 2 * 0.2, i * 0.01) for i in range(20000))   # short moves
+plain = gcode.analyze(("G90 G21\nT1 M6\n" + moves).encode())
+for want in (plain["total"] / 4, plain["total"] * 3):            # far outside the old half-to-double window
+    d = gcode.analyze((";@MKR|TIME|seconds=%.3f\nG90 G21\nT1 M6\n" % want + moves).encode())
+    check(abs(d["total"] - want) < 1, "the total is Makera's estimate (%.0f s) whatever the model says (%.0f s)"
+          % (want, plain["total"]))
+def run(speed, makera, minutes):
+    """The ratio after a job of `minutes` estimated minutes, on a machine running at `speed` times the estimate."""
+    job = {"ratio": None}
+    r = 1.0
+    for est in range(0, minutes * 60, 15):
+        r = Hub._update_ratio(job, est * speed, float(est), makera)
+    return r, job
+r, job = run(1.08, True, 30)
+check(r == 1.0 and job["ratio_used"] == 1.0, "within 15 %% of Makera's estimate the screen keeps its times (%.2f)" % r)
+r, _ = run(1.08, False, 30)
+check(abs(r - 1.08) < 0.01, "without Makera's estimate a small difference is followed (%.2f)" % r)
+r, _ = run(0.25, True, 12)
+check(abs(r - 0.25) < 0.02, "a job running 4 times faster is followed within 12 estimated minutes (%.2f)" % r)
+r, _ = run(3.0, True, 12)
+check(abs(r - 3.0) < 0.05, "and one running 3 times slower (%.2f)" % r)
+job = {"ratio": None}
+for est in range(0, 900, 15):
+    Hub._update_ratio(job, est * 0.5, float(est), True)
+Hub._update_ratio(job, 1000.0, 10.0, True)
+check(job["samples"] == [(1000.0, 10.0)], "a job that goes back (restarted part way) is measured afresh")
+
 print("all unit checks passed")

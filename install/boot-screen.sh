@@ -43,11 +43,20 @@ QUIET_NOTES=cmdline-added.txt
 #            a restart. Nothing is named for the 3.5inch DPI screen until it has been tried.
 z1_screen_info() {
   case "$1:$2" in
+    #piTFT
     pitft:title) echo 'Adafruit PiTFT Plus 2.8" screen' ;;
     pitft:detect) echo 'pitft28-resistive' ;;
     pitft:lines) echo 'dtparam=spi=on dtoverlay=pitft28-resistive,rotate=90' ;;
     pitft:size) echo '320,240' ;;
     pitft:touch) echo 'stmpe_ts' ;;
+    # DSI43
+    dsi43:title) echo 'Waveshare 4.3inch DSI LCD' ;;
+    dsi43:detect) echo 'vc4-kms-dsi-7inch' ;;
+    dsi43:kms) echo 'yes' ;;
+    dsi43:lines) echo 'dtoverlay=vc4-kms-v3d dtoverlay=vc4-kms-dsi-7inch' ;;
+    dsi43:size) echo '800,480' ;;
+    dsi43:touch) echo '' ;;
+    # DPI35
     dpi35:title) echo 'Waveshare 3.5inch DPI LCD' ;;
     dpi35:detect) echo 'waveshare-35dpi' ;;
     dpi35:kms) echo 'yes' ;;

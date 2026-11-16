@@ -9,6 +9,7 @@ details behind it: which screens the installer supports, and how the housing fit
 |---|---|---|---|
 | Waveshare 3.5inch DPI LCD (SKU 19173) | Pi 3A+, 3B+, 3B or 4 | One housing for all four | `--dpi35` |
 | Adafruit PiTFT Plus 2.8" (2298 or 2423) | Pi 4 | No housing | none (the default) |
+| Waveshare 4.3inch DSI LCD | Pi 4B | No housing | `--dsi43` |
 
 Any Pi with Wi-Fi and the 40-pin header runs the software, a Zero 2 W for example, but the housing is made
 only for the Pis above. A Pi 3 needs a 5 V 2.5 A micro-USB supply, a Pi 4 a 5 V 3 A USB-C one.
@@ -21,6 +22,8 @@ only for the Pis above. A Pi 3 needs a 5 V 2.5 A micro-USB supply, a Pi 4 a 5 V 
   The installer's default. Often out of stock at Adafruit.
 - **Waveshare 2.8inch DPI LCD (480 x 640, portrait):** also drawn at 2x. Not supported by the installer yet.
   Waveshare documents a fix needed on the Zero 2 W (grays show green).
+- **Waveshare 4.3inch DSI LCD:** 800 x 480 IPS, capacitive touch.
+  Uses the Raspberry Pi KMS DSI driver. BitCue draws its 320 x 240 layout at 2x, centered on screen.
 - **HDMI monitor:** `--hdmi`. Uses a browser, so a Pi 4 or 5 is better than a Zero.
 
 ## Install
